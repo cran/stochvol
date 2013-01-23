@@ -1,0 +1,29 @@
+useDynLib(stochvol)
+
+#exportPattern("^[[:alpha:]]+")
+
+export(
+ "svsim",
+ "svsample",
+ "para",
+ "latent",
+ "latent0",
+ "priors",
+ "thinning",
+ "runtime",
+ "updatesummary",
+ "paradensplot",
+ "paratraceplot",
+ "volplot",
+ "predict.svdraws",
+ "plot.svdraws"
+)
+
+S3method("print", "svsim")
+S3method("summary", "svsim")
+S3method("plot", "svsim")
+
+S3method("print", "svdraws")
+S3method("summary", "svdraws")
+S3method("plot", "svdraws")
+S3method("predict", "svdraws")
