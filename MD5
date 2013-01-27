@@ -1,9 +1,9 @@
-388e0396aef8c22620710637024b9bc4 *DESCRIPTION
+fb6c54bde3f558d0daac4dc4301d099b *DESCRIPTION
 78908898018a8b59fd3141e309f7527d *NAMESPACE
-8dd393441c529fc1becfef32e8a6fe0d *NEWS
+f76c052229118a318229739b54062b6d *NEWS
 045d7bf25ca3772cd2d00596d4f20d35 *R/simulation.R
-435fe3ccfc199ec59936c2b3c4dd1dec *R/utilities_svdraws.R
-70f2b38b6e2f4639c5ac93e444531171 *R/wrapper.R
+f6914f06881275f95b2ce4994553ca67 *R/utilities_svdraws.R
+3b8d65afc305c6e7464f61e1d2db899f *R/wrapper.R
 2bbd2e815c2a9c71b5bb0cd9fdca1e0c *man/extractors.Rd
 91750cdffcfa7e5510cd6d4148b1cb73 *man/paradensplot.Rd
 05463a91236ab96b8bd3bdf5ac24dd58 *man/paratraceplot.Rd

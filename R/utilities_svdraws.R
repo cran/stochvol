@@ -114,7 +114,7 @@ paratraceplot <- function(x, mar = c(1.9, 1.9, 1.9, .5), mgp = c(2, .6, 0), ...)
  paranames <- c(quote(mu), quote(phi), quote(sigma))
  for (i in 1:3) {
   mytraceplot(x$para[,i], xlab="", mgp = c(2, .6, 0),
-	      main=paste0("Trace of ", paranames[i], " (thinning = ", x$thinning$para,")"), ...)
+	      main=paste("Trace of ", paranames[i], " (thinning = ", x$thinning$para,")", sep=''), ...)
  }
  par(oldpar)
  invisible(x)
@@ -142,7 +142,7 @@ volplot <- function(x, forecast = 0, dates = NULL, show0 = FALSE,
   if (thintime != 1) {
    lasth <- as.integer(gsub("h_", "", dimnames(x$latent)[[2]][dim(x$latent)[2]]))
    if (length(x$y) > lasth) {
-       warning(paste0("Thinning for time 'thintime' has not been set to one during sampling. This means we are forecasting conditional on h_", lasth, " and not on h_", length(x$y), "."))
+       warning(paste("Thinning for time 'thintime' has not been set to one during sampling. This means we are forecasting conditional on h_", lasth, " and not on h_", length(x$y), ".", sep=''))
    }
   }
   
@@ -170,9 +170,9 @@ volplot <- function(x, forecast = 0, dates = NULL, show0 = FALSE,
  } else xlim <- NULL
  
  ts.plot(t(obj), gpars=list(xlim=xlim, col=cols, xlab='', xaxt='n', mgp=mgp, tcl=tcl,
-			    main = paste0("Estimated volatilities in percent (",
+			    main = paste("Estimated volatilities in percent (",
 					  paste(dimnames(obj)[[1]], collapse=' / '),
-					  " posterior quantiles)"), ...))
+					  " posterior quantiles)", sep=''), ...))
  
  if (is(forecast, "svpredict")) {
   for (i in 1:qs) lines(xs[,i], ys[,i], lty=forecastlty, col=cols[i])
@@ -258,7 +258,7 @@ predict.svdraws <- function(object, steps = 1, ...) {
  class(volpred) <- c("svpredict", "mcmc")
  lastname <- dimnames(object$latent)[[2]][dim(object$latent)[2]]
  lastnumber <- as.integer(gsub("h_", "", lastname))
- colnames(volpred) <- paste0("h_", seq(lastnumber + 1, lastnumber + steps))
+ colnames(volpred) <- paste("h_", seq(lastnumber + 1, lastnumber + steps), sep='')
  volpred
 }
 
@@ -364,7 +364,7 @@ mytraceplot <- function (x, smooth = FALSE, col = 1:6, type = "l", ylab = "", xl
         matplot(xp, yp, xlab = xlab, ylab = ylab, type = type, 
             col = col, mgp = mgp, tcl = tcl, ...)
         if (!is.null(varnames(x)) && is.null(list(...)$main)) 
-            title(paste0("Trace of ", varnames(x)[j], " (thin = ", attr(x, "thinning")$thinpara,")"))
+            title(paste("Trace of ", varnames(x)[j], " (thin = ", attr(x, "thinning")$thinpara,")", sep=''))
         if (smooth) {
             scol <- rep(col, length = nchain(x))
             for (k in 1:nchain(x)) lines(lowess(xp, yp[, k]), 
