@@ -76,7 +76,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), prior
   allowednames <- c("parameterization", "mhcontrol", "gammaprior", "truncnormal", "mhsteps", "proposalvar2sigmatheta", "proposalvar4sigmatheta")
   exist <- pmatch(expertnames, allowednames)
   if (any(is.na(exist)))
-   stop(paste0("Illegal element '", paste(expertnames[is.na(exist)], collapse="' and '"), "' in argument 'expert'."))
+   stop(paste("Illegal element '", paste(expertnames[is.na(exist)], collapse="' and '"), "' in argument 'expert'.", sep=''))
   
   expertenv <- list2env(expert) 
   

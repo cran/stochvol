@@ -1,3 +1,5 @@
 Changes in Version 0.5-0
-
   - First CRAN release version.
+
+Changes in Version 0.5-1
+  - Replaced all paste0(...) calls by paste(..., sep='') 
