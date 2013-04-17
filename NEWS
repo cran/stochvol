@@ -2,4 +2,12 @@ Changes in Version 0.5-0
   - First CRAN release version.
 
 Changes in Version 0.5-1
-  - Replaced all paste0(...) calls by paste(..., sep='') 
+  - Replaced all paste0(...) calls by paste(..., sep='')
+
+Changes in Version 0.6-0
+  - Introduced ".svsample" for minimal overhead sampling. Intended to
+  - Disabled progress bar in non-Unix-like systems due to problems with
+    console flushing
+    be used as a plug-in into other MCMC samplers. No input checking, use
+    with proper care!
+  - Some bug fixes for solaris. However, there are very likely some left.

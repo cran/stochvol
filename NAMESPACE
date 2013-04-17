@@ -16,7 +16,8 @@ export(
  "paratraceplot",
  "volplot",
  "predict.svdraws",
- "plot.svdraws"
+ "plot.svdraws",
+ ".svsample"
 )
 
 S3method("print", "svsim")

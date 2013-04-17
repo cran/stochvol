@@ -185,12 +185,15 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), prior
 
  if (!quiet) {
   cat(paste("\nCalling ", parameterization, " MCMC sampler with ", draws+burnin, " iter. Series length T = ", length(y), ".\n",sep=""))
+  flush.console()
  }
- 
+
+ if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet
+
   runtime <- system.time(res <-
   .Call("sampler", y, draws, burnin,
        	priormu[1], priormu[2]^2, priorphi[1], priorphi[2], priorsigma, 
-       	thinlatent, thintime, startpara, startlatent, quiet, para, mhsteps,
+       	thinlatent, thintime, startpara, startlatent, myquiet, para, mhsteps,
        	B011, B022, mhcontrol, gammaprior, truncnormal, PACKAGE = "stochvol"))
 
  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
@@ -222,5 +225,19 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), prior
  res <- updatesummary(res, ...)
 
  if (!quiet) cat("Done!\n\n")
+ res
+}
+
+# This function does not check input nor converts the result to coda objects
+
+.svsample <- function(y, draws = 1, burnin = 0, priormu = c(-10, 3), priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1, quiet = TRUE, startpara, startlatent) {
+
+ res <- .Call("sampler", y, draws, burnin, priormu[1], priormu[2]^2,
+	      priorphi[1], priorphi[2], priorsigma, thinlatent, thintime,
+	      startpara, startlatent, quiet, 3L, 2L, 10^8, 10^12,
+	      -1, TRUE, FALSE, PACKAGE = "stochvol")
+
+ res$para <- t(res$para[-1,,drop=FALSE])
+ rownames(res$para) <- names(res$para) <- c("mu", "phi", "sigma")
  res
 }
