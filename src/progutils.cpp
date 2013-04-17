@@ -46,6 +46,7 @@ int progressbar_init(int N) {
  }
  Rprintf("] 100%");
  Rprintf("\r  0% [");
+// R_FlushConsole();
  return show;
 }
 
@@ -53,6 +54,7 @@ int progressbar_init(int N) {
 void progressbar_finish(int N) {
  if (!(N % 50) && N >= 2500) Rprintf("+");
  Rprintf("] 100%\n\n");
+// R_FlushConsole();
 }
 
 // b)

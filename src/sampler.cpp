@@ -158,7 +158,7 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   // Solution of Chol*x = covector ("forward algorithm")
   forwardAlg(chol_diag, chol_offdiag, covector, &htmp(0));
 
-  htmp += rnorm(T);
+  htmp = htmp + rnorm(T);
 
   // Solution of (Chol')*x = htmp ("backward algorithm")
   backwardAlg(chol_diag, chol_offdiag, htmp, &h(0));
