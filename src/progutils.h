@@ -24,7 +24,7 @@ int progressbar_init(int N);
 
 // adds one '+' to progress bar
 inline void progressbar_print() {
- Rprintf("+");
+ REprintf("+");
 // R_FlushConsole();
 }
 

@@ -1,10 +1,13 @@
-748bf57a4d748e1f8471b3cf9a3883d0 *DESCRIPTION
+59da64ff95c26f352f68c2c1cb4e4a00 *DESCRIPTION
 089a4bae4830f17d0fb52e2f13bdfa14 *NAMESPACE
-415e7a4a3731cbe75b25b6c3c0f96559 *NEWS
+129335b2eda0a27b74409c441f8bc5bd *NEWS
 045d7bf25ca3772cd2d00596d4f20d35 *R/simulation.R
 f6914f06881275f95b2ce4994553ca67 *R/utilities_svdraws.R
-6a255a44257d15f14fee7c94da50c015 *R/wrapper.R
+396c2b66f0990d1bc06931a966262281 *R/wrapper.R
+ed4b5f2578ac4921107281281762674c *data/exrates.RData
+68e314f6a084772fc8938ee5ab8f9884 *inst/CITATION
 440c2600666130e1890a25fcb19cabed *man/DOTsvsample.Rd
+eb3413eebbd864bdf02ea286f9a31515 *man/exrates.Rd
 2bbd2e815c2a9c71b5bb0cd9fdca1e0c *man/extractors.Rd
 91750cdffcfa7e5510cd6d4148b1cb73 *man/paradensplot.Rd
 05463a91236ab96b8bd3bdf5ac24dd58 *man/paratraceplot.Rd
@@ -20,7 +23,7 @@ bb9ff779547aa16215021f3beb98aa05 *man/predict.svdraws.Rd
 1c36d0226b1152a3ab08e0d1441e0dbe *src/auxmix.cpp
 5f4c6847735d186497217257d8994d28 *src/auxmix.h
 576dc26bd84ab6e0937c7f97a578453a *src/densities.h
-f0866dbd3a9f1b2b811049720b358047 *src/progutils.cpp
-0b79c02e8c1017d9d1560d25f3f277d1 *src/progutils.h
-485f264bbf1fcc6561fe8259b8db9539 *src/sampler.cpp
+b811f9468dd0f4e3a7598fa0bfe4a344 *src/progutils.cpp
+f7bc720fd95ef80ab7d8e8b5f09a5308 *src/progutils.h
+c093d5846378f37b6b9643d490626e90 *src/sampler.cpp
 4abf6b152dfab1938915b0d6a39e6d15 *src/sampler.h

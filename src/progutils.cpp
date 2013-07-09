@@ -35,25 +35,25 @@ Rcpp::List cleanUp(Rcpp::NumericVector mu, Rcpp::NumericVector phi, Rcpp::Numeri
 // sets up the progress bar
 int progressbar_init(int N) {
  int show, tmp;
- Rprintf("\n      ");
+ REprintf("\n      ");
  if (N >= 2500) {
-  for (int i = 0; i < 50+1; i++) Rprintf(" ");
+  for (int i = 0; i < 50+1; i++) REprintf(" ");
   show = N/50;
  }
  else {
-  for (int i = 0; i < (N-1)/50+1; i++) Rprintf(" ");
+  for (int i = 0; i < (N-1)/50+1; i++) REprintf(" ");
   show = 50;
  }
- Rprintf("] 100%");
- Rprintf("\r  0% [");
+ REprintf("] 100%");
+ REprintf("\r  0% [");
 // R_FlushConsole();
  return show;
 }
 
 // finalizes progress bar
 void progressbar_finish(int N) {
- if (!(N % 50) && N >= 2500) Rprintf("+");
- Rprintf("] 100%\n\n");
+ if (!(N % 50) && N >= 2500) REprintf("+");
+ REprintf("] 100%\n\n");
 // R_FlushConsole();
 }
 

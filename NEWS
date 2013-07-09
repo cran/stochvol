@@ -1,13 +1,27 @@
-Changes in Version 0.5-0
-  - First CRAN release version.
+TODO: Clean up summary.svdraws to make use of print.summary.svdraws
 
-Changes in Version 0.5-1
-  - Replaced all paste0(...) calls by paste(..., sep='')
+Changes in Version 0.6-1
+  - Fixed typo in wrapper.R which previously disallowed changing the
+    "expert" argument "proposalvar4sigmaphi": Replaced
+    "proposalvar2sigmaphi" by "proposalvar4sigmaphi" on line 76.
+  - Included EUR exchange rates from the European Bank's Statistical Data
+    Warehouse. Use with "data(exrates)".
+  - Added CITATION file.
+  - Replaced Rprintf by REprintf and cat(...) by cat(..., file=stderr())
+    for status reports. Thanks to Kurt Hornik for pointing this out.
 
 Changes in Version 0.6-0
   - Introduced ".svsample" for minimal overhead sampling. Intended to
-  - Disabled progress bar in non-Unix-like systems due to problems with
-    console flushing
     be used as a plug-in into other MCMC samplers. No input checking, use
     with proper care!
-  - Some bug fixes for solaris. However, there are very likely some left.
+  - Disabled progress bar in non-Unix-like systems due to problems with
+    console flushing.
+  - Some bug fixes for solaris. Seems to build fine now. Thanks to Brian
+    Ripley for reporting the bugs.
+
+Changes in Version 0.5-1
+  - Replaced all paste0(...) calls by paste(..., sep='') for
+    compatibility reasons.
+
+Changes in Version 0.5-0
+  - First CRAN release version.

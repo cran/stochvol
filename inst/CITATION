@@ -1,0 +1,33 @@
+citHeader("To cite package stochvol in publications use:")
+
+## R >= 2.8.0 passes package metadata to citation().
+if(!exists("meta") || is.null(meta)) meta <- packageDescription("stochvol")
+year <- sub("-.*", "", meta$Date)
+note <- sprintf("R package version %s", meta$Version)
+
+citEntry(entry = "manual",
+         title = "{stochvol}: Efficient Bayesian Inference for Stochastic Volatility (SV) Models",
+         author = personList(as.person("Gregor Kastner")),                              
+         year = year,
+         note = note,
+         url = "http://cran.r-project.org/package=stochvol",
+         textVersion =
+         paste("Gregor Kastner",
+   	       sprintf("(%s).", year),	 
+               "stochvol: Efficient Bayesian inference for stochastic volatility (SV) models.",
+	       paste(note, ".", sep = ""),
+               "URL: http://cran.r-project.org/package=stochvol")
+)
+
+citEntry(entry="article",
+         title = "Ancillarity-Sufficiency Interweaving Strategy ({ASIS}) for Boosting {MCMC} Estimation of Stochastic Volatility Models",
+         author = personList(as.person("Gregor Kastner"),
+                             as.person("Sylvia Fr\\\"{u}hwirth-Schnatter")),
+         journal = "Computational Statistics \\& Data Analyis",
+         year = "2013",
+         volume = "forthcoming", 
+         number = "",
+         pages = "",
+         url = "http://dx.doi.org/10.1016/j.csda.2013.01.002",
+         textVersion = "Gregor Kastner, Sylvia Frühwirth-Schnatter (2013). Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC estimation of stochastic volatility models. Computational Statistics & Data Analysis, forthcoming. URL: http://dx.doi.org/10.1016/j.csda.2013.01.002"
+)
