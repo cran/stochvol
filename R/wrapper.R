@@ -73,7 +73,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), prior
    stop("Argument 'expert' must be a named list with nonempty names.")
   if (length(unique(expertnames)) != length(expertnames))
    stop("No duplicate elements allowed in argument 'expert'.")
-  allowednames <- c("parameterization", "mhcontrol", "gammaprior", "truncnormal", "mhsteps", "proposalvar2sigmatheta", "proposalvar4sigmatheta")
+  allowednames <- c("parameterization", "mhcontrol", "gammaprior", "truncnormal", "mhsteps", "proposalvar4sigmaphi", "proposalvar4sigmatheta")
   exist <- pmatch(expertnames, allowednames)
   if (any(is.na(exist)))
    stop(paste("Illegal element '", paste(expertnames[is.na(exist)], collapse="' and '"), "' in argument 'expert'.", sep=''))
@@ -184,11 +184,11 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), prior
  }
 
  if (!quiet) {
-  cat(paste("\nCalling ", parameterization, " MCMC sampler with ", draws+burnin, " iter. Series length T = ", length(y), ".\n",sep=""))
+  cat(paste("\nCalling ", parameterization, " MCMC sampler with ", draws+burnin, " iter. Series length T = ", length(y), ".\n",sep=""), file=stderr())
   flush.console()
  }
 
- if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet
+ if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet  # Hack to prevent console flushing problems with Windows
 
   runtime <- system.time(res <-
   .Call("sampler", y, draws, burnin,
@@ -199,10 +199,10 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), prior
  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
   
  if (!quiet) {
-  cat("Timing (in seconds):\n")
+  cat("Timing (in seconds):\n", file=stderr())
   print(runtime)
-  cat(round((draws+burnin)/runtime[3]), "iterations per second.\n\n")
-  cat("Converting results to coda objects... ")
+  cat(round((draws+burnin)/runtime[3]), "iterations per second.\n\n", file=stderr())
+  cat("Converting results to coda objects... ", file=stderr())
  }
   
  # store results:
@@ -219,12 +219,12 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), prior
  class(res) <- "svdraws"
  
  if (!quiet) {
-  cat("Done!\n")
-  cat("Summarizing posterior draws... ")
+  cat("Done!\n", file=stderr())
+  cat("Summarizing posterior draws... ", file=stderr())
  }
  res <- updatesummary(res, ...)
 
- if (!quiet) cat("Done!\n\n")
+ if (!quiet) cat("Done!\n\n", file=stderr())
  res
 }
 

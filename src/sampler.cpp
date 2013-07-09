@@ -275,7 +275,7 @@ Rcpp::NumericVector regressionCentered(
    sigma2_prop = exp(Rcpp::rnorm(1,log(sigma*sigma), MHcontrol)[0]);
    logR = logacceptrateRW(sigma2_prop, sigma*sigma, Bsigma, T, z);
 
-//  Rprintf("\nold: %f, new: %f, R: %f", sigma, sqrt(sigma2_prop), exp(logR));
+//  REprintf("\nold: %f, new: %f, R: %f", sigma, sqrt(sigma2_prop), exp(logR));
    if (log(Rcpp::runif(1)[0]) < logR) sigma = sqrt(sigma2_prop);
   }
   else {  // either IG(-.5,0)-proposal or IG(1.5,1.5*Bsigma)-prior
@@ -314,7 +314,7 @@ Rcpp::NumericVector regressionCentered(
   R += logdnorm(phi, 0, sigma/sqrt(B011inv));
   R -= logdnorm(phi_prop, 0, sigma/sqrt(B011inv));
 
-  if (Rcpp::as<double>(Rcpp::runif(1)) < exp(R)) {
+  if (log(Rcpp::as<double>(Rcpp::runif(1))) < R) {
    phi = phi_prop;
   }
  
@@ -331,7 +331,7 @@ Rcpp::NumericVector regressionCentered(
   R += logdnorm(gamma, 0, sigma/sqrt(B022inv));
   R -= logdnorm(gamma_prop, 0, sigma/sqrt(B022inv));
   
-  if (Rcpp::as<double>(Rcpp::runif(1)) < exp(R)) {
+  if (log(Rcpp::as<double>(Rcpp::runif(1))) < R) {
    mu = gamma_prop/(1-phi);
   }
  }
@@ -385,7 +385,7 @@ Rcpp::NumericVector regressionCentered(
   R -= logdnorm(gamma_prop, 0, sigma_prop/sqrt(B011inv));
 
   // accept/reject
-  if (Rcpp::as<double>(Rcpp::runif(1)) < exp(R)) {
+  if (log(Rcpp::as<double>(Rcpp::runif(1))) < R) {
    mu = gamma_prop/(1-phi_prop);
    phi = phi_prop;
    if (MHsteps == 1) sigma = sigma_prop;
@@ -422,7 +422,7 @@ Rcpp::NumericVector regressionNoncentered(
   }
   BT11 = 1/(tmp1+1/Bsigma);
   bT1 = BT11*tmp2; 
-//  Rprintf("old: %f, new: mean %f and sd %f\n", sigma, bT1, sqrt(BT11));
+//  REprintf("old: %f, new: mean %f and sd %f\n", sigma, bT1, sqrt(BT11));
   sigma = as<double>(Rcpp::rnorm(1, bT1, sqrt(BT11)));
 
   // second, draw mu from the full conditional posterior:
@@ -434,7 +434,7 @@ Rcpp::NumericVector regressionNoncentered(
   }
   BT22 = 1/(tmp1+1/Bmu);
   bT2 = BT22*(tmp2 + bmu/Bmu);
-//  Rprintf("old: %f, new: mean %f and sd %f\n\n", mu, bT2, sqrt(BT22));
+//  REprintf("old: %f, new: mean %f and sd %f\n\n", mu, bT2, sqrt(BT22));
   mu = as<double>(Rcpp::rnorm(1, bT2, sqrt(BT22)));
 
  } else {  // Gibbs-sample mu and sigma jointly (regression) 
