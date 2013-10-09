@@ -8,7 +8,7 @@ Minimal overhead version of \code{\link{svsample}}.
  \code{.svsample} is a minimal overhead version of \code{\link{svsample}} with slightly different default arguments and a simplified return value structure. It is intended to be used mainly for one-step updates where speed is an issue, e.g., as a plug-in into other MCMC samplers. Note that absolutely no input checking is performed, thus this function is to be used with proper care!
 }
 \usage{
-.svsample(y, draws = 1, burnin = 0, priormu = c(-10, 3), priorphi = c(5, 1.5),
+.svsample(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5),
 	  priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1,
 	  quiet = TRUE, startpara, startlatent)
 }
@@ -24,7 +24,7 @@ Minimal overhead version of \code{\link{svsample}}.
    single number greater or equal to 0, indicating the number of draws discarded as burn-in. Will be automatically coerced to integer. The default value is 0.
 }
   \item{priormu}{
-   numeric vector of length 2, indicating mean and standard deviation for the Gaussian prior distribution of the parameter \code{mu}, the level of the log-volatility. The default value is \code{c(-10, 3)}, which constitutes a rather vague prior for many common exchange rate datasets, stock returns and the like.
+   numeric vector of length 2, indicating mean and standard deviation for the Gaussian prior distribution of the parameter \code{mu}, the level of the log-volatility. The default value is \code{c(0, 100)}, which constitutes a practically uninformative prior for common exchange rate datasets, stock returns and the like.
 }
   \item{priorphi}{
    numeric vector of length 2, indicating the shape parameters for the Beta prior distributoin of the transformed parameter \code{(phi+1)/2}, where \code{phi} denotes the persistence of the log-volatility. The default value is \code{c(5, 1.5)}, which constitutes a prior that puts some belief in a persistent log-volatility but also encompasses the region where \code{phi} is around 0.

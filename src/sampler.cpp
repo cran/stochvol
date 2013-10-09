@@ -13,7 +13,7 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   const SEXP startvol_in, const SEXP quiet_in, const SEXP para_in,
   const SEXP MHsteps_in, const SEXP B011_in, const SEXP B022_in,
   const SEXP mhcontrol_in, const SEXP gammaprior_in,
-  const SEXP truncnormal_in) {
+  const SEXP truncnormal_in, const SEXP offset_in) {
 
  // convert SEXP into Rcpp-structures (AFAIK no copy at this point)
  NumericVector y(y_in), startvol(startvol_in);
@@ -51,6 +51,9 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  int parameterization   = as<int>(para_in);
  bool centered_baseline = as<int>(para_in) % 2; // 0 for C, 1 for NC baseline
 
+ // offset:
+ double offset		= as<double>(offset_in);
+
  // moment-matched IG-prior
  double c0 = 2.5;
  double C0 = 1.5*Bsigma;
@@ -85,7 +88,7 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  NumericVector h0store(draws/thin);
 
  NumericMatrix mixprob(10, T);  // mixture probabilities
- NumericVector data = log(y*y);  // commonly used transformation
+ NumericVector data = log(y*y + offset);  // commonly used transformation
  NumericVector omega_diag(T);  // contains diagonal elements of precision matrix
  double omega_offdiag;  // contains off-diag element of precision matrix (const)
  NumericVector chol_offdiag(T-1), chol_diag(T);  // Cholesky-factor of Omega

@@ -1,14 +1,20 @@
 # R wrapper function for the main MCMC loop
 
-svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1, quiet = FALSE, startpara, startlatent, expert, ...) {
+svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1, quiet = FALSE, startpara, startlatent, expert, ...) {
  
  # Some error checking for y
  if (is(y, "svsim")) {
   y <- y[["y"]]
   warning("Extracted data vector from 'svsim'-object.")
  }
- if (!is.numeric(y) | any(y == 0)) stop("Argument 'y' (data vector) must be numeric without zeros.")
+ if (!is.numeric(y)) stop("Argument 'y' (data vector) must be numeric.")
+ 
  if (length(y) < 2) stop("Argument 'y' (data vector) must contain at least two elements.")
+
+ if (any(y == 0)) {
+  myoffset <- sd(y)/10000
+  warning(paste("Argument 'y' (data vector) contains zeros. I am adding an offset constant of size ", myoffset, " to do the auxiliary mixture sampling. If you want to avoid this, you might consider de-meaning the returns before calling this function.", sep=""))
+ } else myoffset <- 0
 
  # Some error checking for draws
  if (!is.numeric(draws) | draws < 1) {
@@ -193,8 +199,9 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), prior
   runtime <- system.time(res <-
   .Call("sampler", y, draws, burnin,
        	priormu[1], priormu[2]^2, priorphi[1], priorphi[2], priorsigma, 
-       	thinlatent, thintime, startpara, startlatent, myquiet, para, mhsteps,
-       	B011, B022, mhcontrol, gammaprior, truncnormal, PACKAGE = "stochvol"))
+       	thinlatent, thintime, startpara, startlatent, myquiet, para,
+	mhsteps, B011, B022, mhcontrol, gammaprior, truncnormal,
+	myoffset, PACKAGE = "stochvol"))
 
  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
   
@@ -230,12 +237,12 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(-10, 3), prior
 
 # This function does not check input nor converts the result to coda objects
 
-.svsample <- function(y, draws = 1, burnin = 0, priormu = c(-10, 3), priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1, quiet = TRUE, startpara, startlatent) {
+.svsample <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1, quiet = TRUE, startpara, startlatent) {
 
  res <- .Call("sampler", y, draws, burnin, priormu[1], priormu[2]^2,
 	      priorphi[1], priorphi[2], priorsigma, thinlatent, thintime,
 	      startpara, startlatent, quiet, 3L, 2L, 10^8, 10^12,
-	      -1, TRUE, FALSE, PACKAGE = "stochvol")
+	      -1, TRUE, FALSE, 0, PACKAGE = "stochvol")
 
  res$para <- t(res$para[-1,,drop=FALSE])
  rownames(res$para) <- names(res$para) <- c("mu", "phi", "sigma")
