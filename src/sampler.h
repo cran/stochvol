@@ -13,7 +13,7 @@ RcppExport SEXP sampler(const SEXP, const SEXP, const SEXP,
   const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
   const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
   const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
-  const SEXP, const SEXP);
+  const SEXP, const SEXP, const SEXP);
 
 // Step (b): sample mu, phi, sigma - __CENTERED__ version:
 Rcpp::NumericVector regressionCentered(

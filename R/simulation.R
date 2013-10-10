@@ -59,17 +59,30 @@ plot.svsim <- function(x, mar = c(3, 2, 2, 1), mgp = c(1.8, .6, 0), ...) {
 }
 
 summary.svsim <- function(object, ...) {
- cat("\nSimulated time series consisting of", length(object$y), "observations.\n
-Parameters: level of latent variable                  mu =", object$para$mu, "
-	    persistence of latent variable           phi =", object$para$phi, "
-	    standard deviation of latent variable  sigma =", object$para$sigma, "
-	    ")
+ ret <- vector("list")
+ class(ret) <- "summary.svsim"
+ ret$len <- length(object$y)
+ ret$para <- object$para
+ ret$vol0 <- 100*object$vol0
+ ret$vol <- summary(100*object$vol)
+ ret$y <- summary(100*object$y)
+ ret
+}
+
+print.summary.svsim  <- function(x, ...) {
+ cat("\nSimulated time series consisting of ", x$len, " observations.\n",
+     "\nParameters: level of latent variable                  mu = ",
+     x$para$mu, 
+     "\n            persistence of latent variable           phi = ",
+     x$para$phi,
+     "\n            standard deviation of latent variable  sigma = ",
+     x$para$sigma, "\n", sep="")
 
  cat("\nSimulated initial volatility (in %): ")
- cat(100*object$vol0, "\n")
+ cat(x$vol0, "\n")
  cat("\nSummary of simulated volatilities (in %):\n")
- print(summary(100*object$vol), ...)
+ print(x$vol)
  cat("\nSummary of simulated data (in %):\n")
- print(summary(100*object$y), ...)
- invisible(object)
+ print(x$y)
+ invisible(x)
 }

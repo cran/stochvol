@@ -1,3 +1,9 @@
+logret <- function(x, demean = FALSE) {
+ tmp <- diff(log(x))
+ if (all(isTRUE(demean))) tmp <- tmp - mean(tmp)
+ tmp
+}
+
 para <- function(x) {
  x$para
 }
@@ -51,25 +57,33 @@ updatesummary <- function(x, quantiles = c(.05, .5, .95), esspara = TRUE, esslat
 }
 
 summary.svdraws <- function(object, showpara = TRUE, showlatent = TRUE, ...) {
- mcp <- mcpar(para(object))
- mcl <- mcpar(latent(object))
+ ret <- vector("list")
+ class(ret) <- "summary.svdraws"
+ ret$mcp <- mcpar(para(object))
+ ret$mcl <- mcpar(latent(object))
+ ret$priors <- priors(object)
+ if (all(isTRUE(showpara))) ret$para <- para(object$summary)
+ if (all(isTRUE(showlatent))) ret$latent <- rbind("h_0" = latent0(object$summary), latent(object$summary))
+ ret
+}
 
- cat("\nSummary of ", mcp[2]-mcp[1]+mcp[3], " MCMC draws after a burn-in of ", mcp[1]-mcp[3], ".\n
+print.summary.svdraws <- function(x, ...) { 
+ cat("\nSummary of ", x$mcp[2]-x$mcp[1]+x$mcp[3], " MCMC draws after a burn-in of ", x$mcp[1]-x$mcp[3], ".\n
 Prior distributions:
-mu        ~ Normal(mean = ", priors(object)$mu[1], ", sd = ", priors(object)$mu[2], ")
-(phi+1)/2 ~ Beta(a0 = ", priors(object)$phi[1], ", b0 = ", priors(object)$phi[2], ")
-sigma^2   ~ ", priors(object)$sigma, " * Chisq(df = 1)\n", sep="")
+mu        ~ Normal(mean = ", x$priors$mu[1], ", sd = ", x$priors$mu[2], ")
+(phi+1)/2 ~ Beta(a0 = ", x$priors$phi[1], ", b0 = ", x$priors$phi[2], ")
+sigma^2   ~ ", x$priors$sigma, " * Chisq(df = 1)\n", sep="")
 
- if (all(isTRUE(showpara))) {
-  cat("\nPosterior draws of parameters (thinning = ", mcp[3], "):\n", sep='')
-  print(para(object$summary), digits=2, ...)
+ if (exists("para", x)) {
+  cat("\nPosterior draws of parameters (thinning = ", x$mcp[3], "):\n", sep='')
+  print(x$para, digits=2, ...)
  }
  
- if (all(isTRUE(showlatent))) {
-  cat("\nPosterior draws of initial and contemporaneous latents (thinning = ", mcl[3], "):\n", sep='')
-  print(rbind("h_0" = latent0(object$summary), latent(object$summary)), digits=2, ...)
+ if (exists("latent", x)) {
+  cat("\nPosterior draws of initial and contemporaneous latents (thinning = ", x$mcl[3], "):\n", sep='')
+  print(x$latent, digits=2, ...)
  }
- invisible(object)
+ invisible(x)
 }
 
 print.svdraws <- function(x, showpara = TRUE, showlatent = TRUE, ...) {
@@ -196,8 +210,9 @@ volplot <- function(x, forecast = 0, dates = NULL, show0 = FALSE,
   }
  }
  else {
+  if (is(dates, "Date")) dates <- as.character(dates)
   if (length(dates) != ncol(x$latent)) {
-   warning("Length of argument 'dates' differs from ncol(x$latent).")
+   stop("Length of argument 'dates' differs from ncol(x$latent).")
   }
   dates <- c('', dates)
   ax <- ax[ax != 0]  # avoid "zero" tick
@@ -212,6 +227,7 @@ plot.svdraws <- function(x, forecast = NULL, dates = NULL, show0 = FALSE,
 			 forecastlty = NULL, tcl = -0.4,
 			 mar = c(1.9, 1.9, 1.7, .5), mgp = c(2, .6, 0),
 			 ...) {
+ oldpar <- par(mfrow=c(1,1))
  layout(matrix(c(1, 1, 1, 2, 3, 4, 5, 6, 7), 3, 3, byrow = TRUE))
  volplot(x, dates = dates, show0 = show0, forecast = forecast,
 	 forecastlty = forecastlty, col = col, tcl = tcl, mar = mar,
@@ -219,6 +235,7 @@ plot.svdraws <- function(x, forecast = NULL, dates = NULL, show0 = FALSE,
  paratraceplot(x, mar = mar, mgp = mgp, ...)
  paradensplot(x, showobs = showobs, showprior = showprior,
 	      showxlab = FALSE, mar = mar, mgp = mgp, ...)
+ par(oldpar)
  invisible(x)
 }
 
@@ -371,4 +388,49 @@ mytraceplot <- function (x, smooth = FALSE, col = 1:6, type = "l", ylab = "", xl
                 col = scol[k])
         }
     }
+}
+
+# residuals
+residuals.svdraws <- function(object, type = "mean", ...) {
+ if (!is(object, "svdraws")) stop("This function expects an 'svdraws' object.")
+ if (!any(type == "mean", type == "median")) stop("Argument 'type' must currently be either 'mean' or 'median'.")
+
+ if (object$thinning$time != 1) warning("Not every point in time has been stored ('thintime' was set to a value unequal to 1 during sampling), thus only some residuals have been extracted.")
+  
+ if (type == "mean") res <- rowMeans(object$y[seq(1, length(object$y), by=object$thinning$time)] / exp(t(object$latent)/2))
+ 
+ if (type == "median") {
+  res <- apply(object$y[seq(1, length(object$y), by=object$thinning$time)] / exp(t(object$latent)/2), 1, median)
+ }
+
+ names(res) <- sub("h", "r", names(res))
+ class(res) <- "svresid"
+
+ res
+}
+
+plot.svresid <- function(x, origdata = NA,
+			 mains = c("Residual plot", "Normal Q-Q plot"),
+			 mar = c(2.9, 2.7, 2.2, .5),
+			 mgp = c(1.7, .6, 0), ...) {
+ 
+ if (any(is.na(origdata))) {
+  oldpar <- par(mfrow=c(1, 2), mar=mar, mgp=mgp)
+ } else {
+  oldpar <- par(mfrow=c(2, 2), mar=mar, mgp=mgp)
+  plot.default(origdata, ylab='Original values', xlab='Time', xaxt='n', ylim=c(-1,1)*max(abs(origdata)), main="Original data", ...)
+  where <- seq(1, length(origdata), length=min(7, length(origdata)))
+  axis(1, at = where, labels = names(origdata)[where])
+  qqnorm(origdata, main=paste(mains[2], "for original data"))
+  qqline(origdata)
+ }
+ 
+ plot.default(x, ylab='Standardized residuals', xlab='Time', xaxt='n', ylim=c(-1,1)*max(abs(x)), main=mains[1], ...)
+ abline(h=qnorm(c(.025, .975)), lty=2)
+ where <- seq(1, length(x), length=min(7, length(x)))
+ axis(1, at = where, labels = gsub("r_", "", names(x)[where]))
+ qqnorm(x, main=paste(mains[2], "for standardized residuals"))
+ qqline(x)
+ par(oldpar)
+ invisible(x)
 }

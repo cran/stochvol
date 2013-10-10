@@ -1,4 +1,20 @@
-TODO: Clean up summary.svdraws to make use of print.summary.svdraws
+Changes in Version 0.7-0
+  - Added a manual.
+  - Changed the default prior for mu from c(-10, 3) to c(0, 100) to
+    avoid disaster when percentage log-returns (instead of log-returns)
+    are used but the prior is not adapted accordingly.
+  - Included the date in the exrates dataset.
+  - Changed svsample to also accept vectors with zero-returns; it throws
+    a warning now (instead of an error) and adds an offset constant.
+  - Fixed plot.svdraws to reset par to old values.
+  - Added a "residual plot" feature. Thanks to Hedibert Lopes for
+    pointing this out.
+  - Added the convenience function "logret" for taking log-returns of a
+    given series, with the possibility of de-meaning.
+  - Cleaned up summary.svdraws, which now returns a "summary.svdraws"
+    object. For actual printing, print.summary.svdraws is used.
+  - Cleaned up summary.svsim, which now returns a "summary.svsim" object.
+    For actual printing, print.summary.svsim is used.
 
 Changes in Version 0.6-1
   - Fixed typo in wrapper.R which previously disallowed changing the
@@ -25,3 +41,8 @@ Changes in Version 0.5-1
 
 Changes in Version 0.5-0
   - First CRAN release version.
+
+TODO: 
+  - code updatesummary in C (apply w/ quantiles is slow)
+  - Make AWOL sampler available for fixed parameters. Thanks to Hedibert
+    Lopes for pointing this out.
