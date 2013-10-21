@@ -206,8 +206,9 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
   
  if (!quiet) {
-  cat("Timing (in seconds):\n", file=stderr())
-  print(runtime)
+  cat("Timing (elapsed): ", file=stderr())
+  cat(runtime["elapsed"], file=stderr())
+  cat(" seconds.\n", file=stderr())
   cat(round((draws+burnin)/runtime[3]), "iterations per second.\n\n", file=stderr())
   cat("Converting results to coda objects... ", file=stderr())
  }

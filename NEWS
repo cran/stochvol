@@ -1,3 +1,6 @@
+Changes in Version 0.7-1
+  - Manual is now provided as a vignette.
+
 Changes in Version 0.7-0
   - Added a manual.
   - Changed the default prior for mu from c(-10, 3) to c(0, 100) to
