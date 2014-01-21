@@ -23,3 +23,6 @@ PKG_LIBS = `$(R_HOME)/bin/Rscript -e "Rcpp:::LdFlags()"`
 ## Of course, autoconf can also be used to write configure files. This is
 ## done by a number of packages, but recommended only for more advanced users
 ## comfortable with autoconf and its related tools.
+
+## Where to look for header files (might be needed to make header files available to other packages)
+PKG_CPPFLAGS += -I../inst/include/

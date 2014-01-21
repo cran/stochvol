@@ -1,3 +1,23 @@
+Changes in Version 0.8-0
+  - Re-structured main sampler code in sampler.cpp: new function "update"
+    performs a single MCMC iteration. Additionally, this function is also
+    made available to be called by C/C++ code in another package. To use
+    this function within C/C++ code, simply #include <update.h> (defined
+    in inst/include) in the C/C++ code of your package, which itself
+    Imports:/Depends: stochvol (>= 0.8).
+  - Minor stylistic changes in helper functions and subroutines at
+    C++-level).
+  - Fixed a minor bug in sampler.cpp where regressionNoncentered
+    returned sigma instead of fabs(sigma) when phi is drawn outside of
+    the unit sphere
+  - Fixed DESCRIPTION to Import: Rcpp (instead of Depend:).
+  - Fixed NAMESPACE: Now has "importFrom(Rcpp, evalCpp)" as required by
+    Rcpp 0.11.0.
+
+Changes in Version 0.7-2
+  - Updated CITATION file
+  - Updated vignette (mainly stylistic changes)
+
 Changes in Version 0.7-1
   - Manual is now provided as a vignette.
 

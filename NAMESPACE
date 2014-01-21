@@ -1,5 +1,8 @@
 useDynLib(stochvol)
 
+importFrom(Rcpp, evalCpp)
+import(coda) 
+
 #exportPattern("^[[:alpha:]]+")
 
 export(

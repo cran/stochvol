@@ -14,7 +14,12 @@
 
 // a)
 // Sums up results and prepares return value
-Rcpp::List cleanUp(Rcpp::NumericVector mu, Rcpp::NumericVector phi, Rcpp::NumericVector sigma, Rcpp::NumericMatrix hstore, Rcpp::NumericVector h0store) {
+Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
+                   const Rcpp::NumericVector & phi,
+		   const Rcpp::NumericVector & sigma,
+		   const Rcpp::NumericMatrix & hstore,
+		   const Rcpp::NumericVector & h0store) {
+
  Rcpp::NumericMatrix res(mu.length(), 3); 
  res(Rcpp::_,0) = mu;
  res(Rcpp::_,1) = phi;
@@ -59,7 +64,7 @@ void progressbar_finish(int N) {
 
 // b)
 // Cholesky factor for a tridiagonal matrix with constant off-diagonal
-void cholTridiag(Rcpp::NumericVector omega_diag, double omega_offdiag, double * chol_diag, double * chol_offdiag)
+void cholTridiag(const Rcpp::NumericVector & omega_diag, double omega_offdiag, double * chol_diag, double * chol_offdiag)
 {
  chol_diag[0] = sqrt(omega_diag[0]);  // maybe speed up via iterators?
  for (int j = 1; j < omega_diag.length(); j++) {
@@ -69,7 +74,7 @@ void cholTridiag(Rcpp::NumericVector omega_diag, double omega_offdiag, double * 
 }
 
 // Solves Chol*x = covector ("forward algorithm")
-void forwardAlg(Rcpp::NumericVector chol_diag, Rcpp::NumericVector chol_offdiag, Rcpp::NumericVector covector, double * htmp)
+void forwardAlg(const Rcpp::NumericVector & chol_diag, const Rcpp::NumericVector & chol_offdiag, const Rcpp::NumericVector & covector, double * htmp)
 {
  htmp[0] = covector[0]/chol_diag[0];
  for (int j = 1; j < chol_diag.length(); j++) {
@@ -78,7 +83,7 @@ void forwardAlg(Rcpp::NumericVector chol_diag, Rcpp::NumericVector chol_offdiag,
 }
 
 // Solves (Chol')*x = htmp ("backward algorithm")
-void backwardAlg(Rcpp::NumericVector chol_diag, Rcpp::NumericVector chol_offdiag, Rcpp::NumericVector htmp, double * h)
+void backwardAlg(const Rcpp::NumericVector & chol_diag, const Rcpp::NumericVector & chol_offdiag, const Rcpp::NumericVector & htmp, double * h)
 {
  int T = chol_diag.length();
  h[T-1] = htmp[T-1]/chol_diag[T-1];
@@ -89,7 +94,7 @@ void backwardAlg(Rcpp::NumericVector chol_diag, Rcpp::NumericVector chol_offdiag
 
 // c)
 // draws length(r) RVs, expects the non-normalized CDF mixprob
-void invTransformSampling(Rcpp::NumericMatrix mixprob, int * r) {
+void invTransformSampling(const Rcpp::NumericMatrix & mixprob, int * r) {
  int T = mixprob.ncol(), rows = mixprob.nrow(), index;
  Rcpp::NumericVector innov = Rcpp::runif(T); 
  double temp;

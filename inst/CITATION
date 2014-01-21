@@ -24,10 +24,10 @@ citEntry(entry="article",
          author = personList(as.person("Gregor Kastner"),
                              as.person("Sylvia Fr\\\"{u}hwirth-Schnatter")),
          journal = "Computational Statistics \\& Data Analyis",
-         year = "2013",
-         volume = "forthcoming", 
+         year = "forthcoming",
+         volume = "", 
          number = "",
          pages = "",
          url = "http://dx.doi.org/10.1016/j.csda.2013.01.002",
-         textVersion = "Gregor Kastner, Sylvia Frühwirth-Schnatter (2013). Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC estimation of stochastic volatility models. Computational Statistics & Data Analysis, forthcoming. URL: http://dx.doi.org/10.1016/j.csda.2013.01.002"
+         textVersion = "Gregor Kastner, Sylvia Frühwirth-Schnatter (forthcoming). Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC estimation of stochastic volatility models. Computational Statistics & Data Analysis. URL: http://dx.doi.org/10.1016/j.csda.2013.01.002"
 )

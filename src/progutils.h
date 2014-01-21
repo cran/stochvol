@@ -1,7 +1,7 @@
 #ifndef _PROGUTILS_H_
 #define _PROGUTILS_H_
 
-/* Contains two code modules:
+/* Contains the following code modules:
 
    a) Some helper functions such as progress bar tools and return value
       prettifier
@@ -17,7 +17,11 @@
 
 // a)
 // Sums up results and prepares return value
-Rcpp::List cleanUp(Rcpp::NumericVector mu, Rcpp::NumericVector phi, Rcpp::NumericVector sigma, Rcpp::NumericMatrix hstore, Rcpp::NumericVector h0store);
+Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
+                   const Rcpp::NumericVector & phi,
+		   const Rcpp::NumericVector & sigma,
+		   const Rcpp::NumericMatrix & hstore,
+		   const Rcpp::NumericVector & h0store);
 
 // sets up the progress bar
 int progressbar_init(int N);
@@ -31,24 +35,34 @@ inline void progressbar_print() {
 // finalizes progress bar
 void progressbar_finish(int N);
 
-inline void store_h(double * h, double * hstore, int timethin, int hstorelength, double h0, double * h0store) {
- for (int j = 0; j < hstorelength; j++) hstore[j] = h[timethin*j];
- *h0store = h0;
-}
+// to store (some) values of h
+inline void store_h(double * h, double * hstore, int timethin,
+                    int hstorelength, double h0, double * h0store,
+		    Rcpp::NumericVector curpara,
+		    bool centered_baseline) {
 
+ if (centered_baseline) {
+  for (int j = 0; j < hstorelength; j++) hstore[j] = h[timethin*j];
+  *h0store = h0;
+ } else {
+  for (int j = 0; j < hstorelength; j++) hstore[j] = curpara[0] + curpara[2]*h[timethin*j];
+  *h0store = curpara[0] + curpara[2]*h0;
+ }
+
+}
 
 // b)
 // Cholesky factor for a tridiagonal matrix with constant off-diagonal
-void cholTridiag(Rcpp::NumericVector omega_diag, double omega_offdiag, double * chol_diag, double * chol_offdiag);
+void cholTridiag(const Rcpp::NumericVector & omega_diag, double omega_offdiag, double * chol_diag, double * chol_offdiag);
 
 // Solves Chol*x = covector ("forward algorithm")
-void forwardAlg(Rcpp::NumericVector chol_diag, Rcpp::NumericVector chol_offdiag, Rcpp::NumericVector covector, double * htmp);
+void forwardAlg(const Rcpp::NumericVector & chol_diag, const Rcpp::NumericVector & chol_offdiag, const Rcpp::NumericVector & covector, double * htmp);
 
 // Solves (Chol')*x = htmp ("backward algorithm")
-void backwardAlg(Rcpp::NumericVector chol_diag, Rcpp::NumericVector chol_offdiag, Rcpp::NumericVector htmp, double * h);
+void backwardAlg(const Rcpp::NumericVector & chol_diag, const Rcpp::NumericVector & chol_offdiag, const Rcpp::NumericVector & htmp, double * h);
 
 // c)
 // draws length(r) RVs, expects the non-normalized CDF mixprob
-void invTransformSampling(Rcpp::NumericMatrix mixprob, int * r);
+void invTransformSampling(const Rcpp::NumericMatrix & mixprob, int * r);
 
 #endif

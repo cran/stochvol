@@ -5,7 +5,7 @@
 #include "auxmix.h"
 
 // Non-normalized posterior probabilities
-void findMixprobs(double * mixprob, Rcpp::NumericVector datanorm)  {
+void findMixprobs(double * mixprob, const Rcpp::NumericVector & datanorm)  {
  int T = datanorm.length();
  int tmp; 
  for (int c = 0; c < T; c++) {  // SLOW (10*T calls to exp)!
@@ -28,7 +28,7 @@ void colCumsums(double * x, int const nrow, int const ncol) {
 }
 
 // Combines findMixprobs() and colCumsums() (see above) into one function
-void findMixCDF(double * mixprob, Rcpp::NumericVector datanorm)  {
+void findMixCDF(double * mixprob, const Rcpp::NumericVector & datanorm)  {
  int T = datanorm.length();
  int tmp; 
  for (int c = 0; c < T; c++) {  // SLOW (10*T calls to exp)!
