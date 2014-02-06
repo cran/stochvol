@@ -4,9 +4,14 @@
 // Main sampling steps and helper functions
 
 #include <Rcpp.h>
+#define COMPILING_STOCHVOL
+#include <update.h>  // this header declares update
+                     // (which is also available to other packages)
 #include "auxmix.h"
 #include "progutils.h"
 #include "densities.h"
+
+// "update" is declared in /inst/include/update.h
 
 // Main sampler (as called from R):
 RcppExport SEXP sampler(const SEXP, const SEXP, const SEXP,
@@ -17,7 +22,7 @@ RcppExport SEXP sampler(const SEXP, const SEXP, const SEXP,
 
 // Step (b): sample mu, phi, sigma - __CENTERED__ version:
 Rcpp::NumericVector regressionCentered(
-       double h0, Rcpp::NumericVector h,
+       double h0, const Rcpp::NumericVector &h,
        double mu, double phi, double sigma,
        double C0, double cT, double Bsigma,
        double a0, double b0,
@@ -27,8 +32,9 @@ Rcpp::NumericVector regressionCentered(
 
 // Step (b): sample mu, phi, sigma - __NONCENTERED__ version:
 Rcpp::NumericVector regressionNoncentered(
-       Rcpp::NumericVector data,
-       double h0, Rcpp::NumericVector h, Rcpp::IntegerVector r,
+       const Rcpp::NumericVector &data,
+       double h0, const Rcpp::NumericVector &h,
+       const Rcpp::IntegerVector &r,
        double mu, double phi, double sigma,
        double Bsigma, double a0, double b0,
        double bmu, double Bmu,

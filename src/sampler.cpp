@@ -2,6 +2,12 @@
 
 #include "sampler.h"
 
+// registering "update" to be available for other packages
+
+RcppExport void R_init_stochvol(DllInfo *dll) {
+ R_RegisterCCallable("stochvol", "update", (DL_FUNC) &update);
+}
+
 using namespace Rcpp; // avoid to type Rcpp:: every time
 RNGScope scope;       // just in case no seed has been set at R level
 
@@ -78,8 +84,7 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  for (int i = 0; i < T; i++) h[i] = startvol[i];  // need to make a manual copy (!)
  if (!centered_baseline) h = (h-mu[0])*sqrt(sigma2inv[0]);
  
- NumericVector h_alter(T);  // contains h1 to hT in alternative para
- double h0, h0_alter;
+ double h0;
  
  IntegerVector r(T);  // mixture indicators
  
@@ -89,35 +94,71 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
 
  NumericMatrix mixprob(10, T);  // mixture probabilities
  NumericVector data = log(y*y + offset);  // commonly used transformation
- NumericVector omega_diag(T);  // contains diagonal elements of precision matrix
- double omega_offdiag;  // contains off-diag element of precision matrix (const)
- NumericVector chol_offdiag(T-1), chol_diag(T);  // Cholesky-factor of Omega
- NumericVector covector(T);  // holds covector (see McCausland et al. 2011)
- NumericVector htmp(T);  // intermediate vector for sampling h
- NumericVector newvals(3);  // holds mu, phi, sigma in every iteration
- newvals[0] = mu[0];
- newvals[1] = phi[0];
- newvals[2] = 1/sqrt(sigma2inv[0]);
-
- double sigmainvtmp, phi2tmp;
+ NumericVector curpara(3);  // holds mu, phi, sigma in every iteration
+ curpara[0] = mu[0];
+ curpara[1] = phi[0];
+ curpara[2] = 1/sqrt(sigma2inv[0]);
 
  // initializes the progress bar
  // "show" holds the number of iterations per progress sign
  int show;
  if (verbose) show = progressbar_init(N);
  
- for (int i = 0; i < N; i++) {  // main MCMC loop
+ for (int i = 0; i < N; i++) {  // BEGIN main MCMC loop
 
   // print a progress sign every "show" iterations
   if (verbose) if (!(i % show)) progressbar_print();
 
+  // a single MCMC update: update indicators, latent volatilities,
+  // and parameters ONCE
+  update(data, curpara, h, h0, mixprob, r, centered_baseline, C0, cT,
+         Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv, Gammaprior,
+	 truncnormal, MHcontrol, MHsteps, parameterization);
+ 
+  // storage:
+  if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store h
+   store_h(&h(0), &hstore(0, (i-burnin)/thin), timethin, hstorelength,
+            h0, &h0store((i-burnin)/thin), curpara, centered_baseline);
+  }
+  mu[i+1] = curpara[0];
+  phi[i+1] = curpara[1];
+  sigma2inv[i+1] = 1/(curpara[2]*curpara[2]);
+ }  // END main MCMC loop
+
+ if (verbose) progressbar_finish(N);  // finalize progress bar
+
+ // Prepare return value and return
+ return cleanUp(mu, phi, sqrt(1/sigma2inv), hstore, h0store);
+}
+
+// update performs one MCMC sampling step:
+
+void update(const NumericVector &data, NumericVector &curpara, NumericVector &h,
+            double &h0, NumericMatrix &mixprob, IntegerVector &r,
+	    const bool centered_baseline, const double C0, const double cT,
+	    const double Bsigma, const double a0, const double b0,
+	    const double bmu, const double Bmu, const double B011inv,
+	    const double B022inv, const bool Gammaprior, const bool truncnormal,
+	    const double MHcontrol, const int MHsteps, const int parameterization) {
+   
+  int T = data.length();
+  
+  NumericVector omega_diag(T);  // contains diagonal elements of precision matrix
+  double omega_offdiag;  // contains off-diag element of precision matrix (const)
+  NumericVector chol_offdiag(T-1), chol_diag(T);  // Cholesky-factor of Omega
+  NumericVector covector(T);  // holds covector (see McCausland et al. 2011)
+  NumericVector htmp(T);  // intermediate vector for sampling h
+  double mu = curpara[0];
+  double phi = curpara[1];
+  double sigma2inv = pow(curpara[2], -2);
+  
   /*
    * Step (c): sample indicators
    */
 
   // calculate non-normalized CDF of posterior indicator probs
   if (centered_baseline) findMixCDF(&mixprob(0,0), data-h);
-  else findMixCDF(&mixprob(0,0), data-newvals[0]-newvals[2]*h); 
+  else findMixCDF(&mixprob(0,0), data-mu-curpara[2]*h); 
 
   // find correct indicators (currently by inversion method)
   invTransformSampling(mixprob, &r(0));
@@ -125,34 +166,34 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   /*
    * Step (a): sample the latent volatilities h:
    */
-  
+ 
   if (centered_baseline) { // fill precision matrix omega and covector c for CENTERED para:
-   omega_diag[0] = mix_varinv[r[0]] + sigma2inv[i];
+   omega_diag[0] = mix_varinv[r[0]] + sigma2inv;
    covector[0] = (data[0] - mix_mean[r[0]])*mix_varinv[r[0]]
-               + mu[i]*(1-phi[i])*sigma2inv[i];
+               + mu*(1-phi)*sigma2inv;
    for (int j = 1; j < (T-1); j++) {
-    omega_diag[j] = mix_varinv[r[j]] + (1+phi[i]*phi[i])*sigma2inv[i]; 
+    omega_diag[j] = mix_varinv[r[j]] + (1+phi*phi)*sigma2inv; 
     covector[j] = (data[j] - mix_mean[r[j]])*mix_varinv[r[j]]
-                + mu[i]*pow((1-phi[i]),2)*sigma2inv[i];
+                + mu*pow((1-phi),2)*sigma2inv;
    }
-   omega_diag[T-1] = mix_varinv[r[T-1]] + sigma2inv[i];
+   omega_diag[T-1] = mix_varinv[r[T-1]] + sigma2inv;
    covector[T-1] = (data[T-1] - mix_mean[r[T-1]])*mix_varinv[r[T-1]]
-                 + mu[i]*(1-phi[i])*sigma2inv[i];
-   omega_offdiag = -phi[i]*sigma2inv[i];  // omega_offdiag is constant
+                 + mu*(1-phi)*sigma2inv;
+   omega_offdiag = -phi*sigma2inv;  // omega_offdiag is constant
   
   } else { // fill precision matrix omega and covector c for NONCENTERED para:
 
-   sigmainvtmp = sqrt(sigma2inv[i]);
-   phi2tmp = phi[i]*phi[i]; 
-   omega_diag[0] = mix_varinv[r[0]]/sigma2inv[i] + 1;
-   covector[0] = mix_varinv[r[0]]/sigmainvtmp*(data[0] - mix_mean[r[0]] - mu[i]);
+   const double sigmainvtmp = sqrt(sigma2inv);
+   const double phi2tmp = phi*phi; 
+   omega_diag[0] = mix_varinv[r[0]]/sigma2inv + 1;
+   covector[0] = mix_varinv[r[0]]/sigmainvtmp*(data[0] - mix_mean[r[0]] - mu);
    for (int j = 1; j < (T-1); j++) {
-    omega_diag[j] = mix_varinv[r[j]]/sigma2inv[i] + 1 + phi2tmp; 
-    covector[j] = mix_varinv[r[j]]/sigmainvtmp*(data[j] - mix_mean[r[j]] - mu[i]);
+    omega_diag[j] = mix_varinv[r[j]]/sigma2inv + 1 + phi2tmp; 
+    covector[j] = mix_varinv[r[j]]/sigmainvtmp*(data[j] - mix_mean[r[j]] - mu);
    }
-   omega_diag[T-1] = mix_varinv[r[T-1]]/sigma2inv[i] + 1;
-   covector[T-1] = mix_varinv[r[T-1]]/sigmainvtmp*(data[T-1] - mix_mean[r[T-1]] - mu[i]);
-   omega_offdiag = -phi[i];  // omega_offdiag is constant
+   omega_diag[T-1] = mix_varinv[r[T-1]]/sigma2inv + 1;
+   covector[T-1] = mix_varinv[r[T-1]]/sigmainvtmp*(data[T-1] - mix_mean[r[T-1]] - mu);
+   omega_offdiag = -phi;  // omega_offdiag is constant
   } 
 
   // Cholesky decomposition
@@ -167,76 +208,61 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   backwardAlg(chol_diag, chol_offdiag, htmp, &h(0));
 
   // sample h0 | h1, phi, mu, sigma
-  if (centered_baseline) h0 = as<double>(rnorm(1, mu[i] + phi[i]*(h[0]-mu[i]),
-                                         1/sqrt(sigma2inv[i])));
-  else h0 = as<double>(rnorm(1, phi[i]*h[0], 1)); 
+  if (centered_baseline) h0 = as<double>(rnorm(1, mu + phi*(h[0]-mu),
+                                         curpara[2]));
+  else h0 = as<double>(rnorm(1, phi*h[0], 1)); 
+  
+  //if (ISNAN(h0)) Rprintf("isnan\nmu:\t%f\nphi:\t%f\nsigma:\t%f\n", mu, phi, curpara[2]);
   /*
    * Step (b): sample mu, phi, sigma
    */
   
   if (centered_baseline) {  // this means we have C as base
-   newvals = regressionCentered(h0, h, mu[i], phi[i],
-     sqrt(1/sigma2inv[i]), C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv,
+   curpara = regressionCentered(h0, h, mu, phi, curpara[2],
+     C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv,
      B022inv, Gammaprior, truncnormal, MHcontrol, MHsteps);
    
    if (parameterization == 3) {  // this means we should interweave
-    h_alter = (h-newvals[0])/newvals[2];
-    h0_alter = (h0-newvals[0])/newvals[2];
-    newvals = regressionNoncentered(data, h0_alter, h_alter, r,
-      newvals[0], newvals[1], newvals[2], Bsigma, a0, b0, bmu, Bmu,
+    NumericVector h_alter(T);  // contains h1 to hT in alternative para
+    double h0_alter;
+    h_alter = (h-curpara[0])/curpara[2];
+    h0_alter = (h0-curpara[0])/curpara[2];
+    curpara = regressionNoncentered(data, h0_alter, h_alter, r,
+      curpara[0], curpara[1], curpara[2], Bsigma, a0, b0, bmu, Bmu,
       truncnormal, MHsteps);
-    h = newvals[0] + newvals[2]*h_alter;
-    h0 = newvals[0] + newvals[2]*h0_alter;
+    h = curpara[0] + curpara[2]*h_alter;
+    h0 = curpara[0] + curpara[2]*h0_alter;
    }
    
-   if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store h
-    store_h(&h(0), &hstore(0, (i-burnin)/thin), timethin, hstorelength,
-            h0, &h0store((i-burnin)/thin));
-   }
-  
   } else {  // NC as base
   
-   newvals = regressionNoncentered(data, h0, h, r, mu[i], phi[i], sqrt(1/sigma2inv[i]),
+   curpara = regressionNoncentered(data, h0, h, r, mu, phi, curpara[2],
                                    Bsigma, a0, b0, bmu, Bmu, truncnormal, MHsteps);
+
    if (parameterization == 4) {  // this means we should interweave
-    h_alter = newvals[0] + newvals[2]*h;
-    h0_alter = newvals[0] + newvals[2]*h0;
-    newvals = regressionCentered(h0_alter, h_alter, newvals[0], newvals[1], newvals[2],
+    NumericVector h_alter(T);  // contains h1 to hT in alternative para
+    double h0_alter;
+    h_alter = curpara[0] + curpara[2]*h;
+    h0_alter = curpara[0] + curpara[2]*h0;
+    curpara = regressionCentered(h0_alter, h_alter, curpara[0], curpara[1], curpara[2],
                                  C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv,
 				 Gammaprior, truncnormal, MHcontrol, MHsteps);
-    h = (h_alter-newvals[0])/newvals[2];
-    h0 = (h0_alter-newvals[0])/newvals[2];
-   }
-  
-   if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store h
-    h_alter = newvals[0] + newvals[2]*h;
-    h0_alter = newvals[0] + newvals[2]*h0;
-    store_h(&h_alter(0), &hstore(0, (i-burnin)/thin), timethin, hstorelength,
-            h0_alter, &h0store((i-burnin)/thin));
+    h = (h_alter-curpara[0])/curpara[2];
+    h0 = (h0_alter-curpara[0])/curpara[2];
    }
   }
-  
-  mu[i+1] = newvals[0];
-  phi[i+1] = newvals[1];
-  sigma2inv[i+1] = 1/(newvals[2]*newvals[2]);
- }
-
- if (verbose) progressbar_finish(N);  // finalize progress bar
-
- // Prepare return value and return
- return cleanUp(mu, phi, sqrt(1/sigma2inv), hstore, h0store);
 }
 
 
 // Step (b): sample mu, phi, sigma - __CENTERED__ version:
 Rcpp::NumericVector regressionCentered(
-       double h0, Rcpp::NumericVector h,
+       double h0, const Rcpp::NumericVector &h,
        double mu, double phi, double sigma,
        double C0, double cT, double Bsigma,
        double a0, double b0,
        double bmu, double Bmu,
        double B011inv, double B022inv,
-       bool gammaprior, bool truncnormal, double MHcontrol, int MHsteps) {
+       bool Gammaprior, bool truncnormal, double MHcontrol, int MHsteps) {
  
  int T = h.length();
  double R, z, CT, sigma2_prop, sigma_prop, sum1, sum2, sum3, sum4, tmp1,
@@ -282,7 +308,7 @@ Rcpp::NumericVector regressionCentered(
    if (log(Rcpp::runif(1)[0]) < logR) sigma = sqrt(sigma2_prop);
   }
   else {  // either IG(-.5,0)-proposal or IG(1.5,1.5*Bsigma)-prior
-   if (gammaprior) {
+   if (Gammaprior) {
     CT = .5*z;
     sigma2_prop = 1/Rcpp::as<double>(Rcpp::rgamma(1, cT, 1/CT));
     if (log(Rcpp::as<double>(Rcpp::runif(1))) <
@@ -295,7 +321,7 @@ Rcpp::NumericVector regressionCentered(
    }
   }
  } else if (MHsteps == 1) {  // draw sigma^2 marginalized over gamma, phi
-  if (gammaprior) {
+  if (Gammaprior) {
    CT = .5*((sum4 - h0*h0 + h[T-1]*h[T-1]) - bT1*sum3 - bT2*sum2);
    sigma2_prop = 1/Rcpp::as<double>(Rcpp::rgamma(1, cT, 1/CT));
   }
@@ -401,8 +427,9 @@ Rcpp::NumericVector regressionCentered(
 
 // Step (b): sample mu, phi, sigma - __NONCENTERED__ version:
 Rcpp::NumericVector regressionNoncentered(
-       Rcpp::NumericVector data,
-       double h0, Rcpp::NumericVector h, Rcpp::IntegerVector r,
+       const Rcpp::NumericVector &data,
+       double h0, const Rcpp::NumericVector &h,
+       const Rcpp::IntegerVector &r,
        double mu, double phi, double sigma,
        double Bsigma, double a0, double b0,
        double bmu, double Bmu,
@@ -415,6 +442,9 @@ Rcpp::NumericVector regressionNoncentered(
  Rcpp::NumericVector quant(2);
 
  if (MHsteps == 3) {  // Gibbs-sample mu|sigma,... and sigma|mu,...
+
+  // TODO: check w.r.t. sign of sigma (priority low because 3-block
+  // sample is useless anyway)
   
   // first, draw sigma from the full conditional posterior:
   tmp1 = 0; 
@@ -497,7 +527,7 @@ Rcpp::NumericVector regressionNoncentered(
  else {  // draw from normal and reject (return) if outside
   phi_prop = (Rcpp::rnorm(1, tmpmean, tmpsd))[0]; 
   if ((phi_prop >= 1) || (phi_prop <= -1)) { // outside the unit sphere
-   Rcpp::NumericVector ret = Rcpp::NumericVector::create(mu, phi, sigma);
+   Rcpp::NumericVector ret = Rcpp::NumericVector::create(mu, phi, fabs(sigma));
    return ret;
   }
  }
