@@ -31,12 +31,12 @@ Yu, Y. and Meng, X.-L. (2011). To Center or Not to Center: That is Not the Quest
 ## Simulate a highly persistent SV process 
 sim <- svsim(500, mu = -10, phi = 0.99, sigma = 0.2)
 
-## Obtain 5000 draws from the sampler (that's too little!)
-draws <- svsample(sim$y, draws = 5000, burnin = 100, priormu = c(-10, 1),
+## Obtain 4000 draws from the sampler (that's too little!)
+draws <- svsample(sim$y, draws = 4000, burnin = 100, priormu = c(-10, 1),
                   priorphi = c(20, 1.2), priorsigma = 0.2)
 
-## Predict 50 days ahead
-fore <- predict(draws, 50)
+## Predict 20 days ahead
+fore <- predict(draws, 20)
 
 ## plot the results
 plot(draws, forecast = fore)

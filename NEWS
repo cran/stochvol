@@ -1,3 +1,8 @@
+Changes in Version 0.8-1
+  - Added a -I directive for compiler in Makevars.win so that winbuilder
+    finds headers in inst/include/.
+  - Re-ran all code used in vignette.
+
 Changes in Version 0.8-0
   - Re-structured main sampler code in sampler.cpp: new function "update"
     performs a single MCMC iteration. Additionally, this function is also
@@ -9,7 +14,7 @@ Changes in Version 0.8-0
     C++-level).
   - Fixed a minor bug in sampler.cpp where regressionNoncentered
     returned sigma instead of fabs(sigma) when phi is drawn outside of
-    the unit sphere
+    the unit sphere.
   - Fixed DESCRIPTION to Import: Rcpp (instead of Depend:).
   - Fixed NAMESPACE: Now has "importFrom(Rcpp, evalCpp)" as required by
     Rcpp 0.11.0.
