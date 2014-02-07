@@ -71,8 +71,8 @@ Gregor Kastner \email{gregor.kastner@wu.ac.at}
 ## Simulate a short and highly persistent SV process 
 sim <- svsim(100, mu = -10, phi = 0.99, sigma = 0.2)
 
-## Obtain 10000 draws from the sampler (that's not a lot)
-draws <- svsample(sim$y, draws = 10000, burnin = 1000,
+## Obtain 5000 draws from the sampler (that's not a lot)
+draws <- svsample(sim$y, draws = 5000, burnin = 1000,
   priormu = c(-10, 1), priorphi = c(20, 1.5), priorsigma = 0.2)
 
 ## Plot the latent volatilities and some forecasts

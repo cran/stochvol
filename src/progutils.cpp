@@ -39,7 +39,7 @@ Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
 
 // sets up the progress bar
 int progressbar_init(int N) {
- int show, tmp;
+ int show;
  REprintf("\n      ");
  if (N >= 2500) {
   for (int i = 0; i < 50+1; i++) REprintf(" ");

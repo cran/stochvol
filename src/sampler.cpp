@@ -65,7 +65,7 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  double C0 = 1.5*Bsigma;
  
  // pre-calculation of a posterior parameter
- double cT; 
+ double cT = -10000; 
  if (Gammaprior) {  
   if (MHsteps == 2 || MHsteps == 3) cT = T/2.0; // we want IG(-.5,0) as proposal
   else if (MHsteps == 1) cT = (T-1)/2.0; // we want IG(-.5,0) as proposal
@@ -265,9 +265,12 @@ Rcpp::NumericVector regressionCentered(
        bool Gammaprior, bool truncnormal, double MHcontrol, int MHsteps) {
  
  int T = h.length();
- double R, z, CT, sigma2_prop, sigma_prop, sum1, sum2, sum3, sum4, tmp1,
-       	tmp2, BT11, BT12, BT22, bT1, bT2, chol11, chol12, chol22, phi_prop,
+ double z, CT, sum1, sum2, sum3, sum4, tmp1,
+       	BT11, BT12, BT22, bT1, bT2, chol11, chol12, chol22, phi_prop,
        	gamma_prop, tmpR, tmpR2, logR;
+ double R = -10000;
+ double sigma2_prop = -10000;
+ double sigma_prop = -10000;
  Rcpp::NumericVector innov(2);
  Rcpp::NumericVector quant(2);
 

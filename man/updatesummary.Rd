@@ -59,7 +59,7 @@ Gregor Kastner \email{gregor.kastner@wu.ac.at}
 sim <- svsim(101)
 
 ## Draw from the posterior (but save only every fifth point in time):
-res <- svsample(sim$y, thintime=5, priorphi = c(10, 1.5))
+res <- svsample(sim$y, draws = 7000, thintime = 5, priorphi = c(10, 1.5))
 
 ## Check out the results:
 summary(res)
