@@ -1,3 +1,12 @@
+Changes in Version 0.8-2
+  - update(...) now takes an additional boolean argument preventing
+    an update of mu (but instead hold mu = 0 fixed). This feature is
+    needed e.g. for factor stochastic volatility models.
+  - C++ function "update" rewritten to use ordinary pointers instead of
+    Rcpp objects. This became necessary because Rcpp objects cannot be
+    constructed re-using memory due to the SEXPREC structure. See
+    https://www.mail-archive.com/rcpp-devel@lists.r-forge.r-project.org/msg06811.html and follow-ups for a more detailed expanation.
+
 Changes in Version 0.8-1
   - Added a -I directive for compiler in Makevars.win so that winbuilder
     finds headers in inst/include/.
@@ -9,7 +18,8 @@ Changes in Version 0.8-0
     made available to be called by C/C++ code in another package. To use
     this function within C/C++ code, simply #include <update.h> (defined
     in inst/include) in the C/C++ code of your package, which itself
-    Imports:/Depends: stochvol (>= 0.8).
+    Imports:/Depends: stochvol (>= 0.8). See package factorstochvol for
+    an example using this mechanism.
   - Minor stylistic changes in helper functions and subroutines at
     C++-level).
   - Fixed a minor bug in sampler.cpp where regressionNoncentered

@@ -201,7 +201,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
        	priormu[1], priormu[2]^2, priorphi[1], priorphi[2], priorsigma, 
        	thinlatent, thintime, startpara, startlatent, myquiet, para,
 	mhsteps, B011, B022, mhcontrol, gammaprior, truncnormal,
-	myoffset, PACKAGE = "stochvol"))
+	myoffset, FALSE, PACKAGE = "stochvol"))
 
  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
   

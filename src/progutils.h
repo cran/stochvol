@@ -63,6 +63,6 @@ void backwardAlg(const Rcpp::NumericVector & chol_diag, const Rcpp::NumericVecto
 
 // c)
 // draws length(r) RVs, expects the non-normalized CDF mixprob
-void invTransformSampling(const Rcpp::NumericMatrix & mixprob, int * r);
+void invTransformSampling(const double * const, int * r, int T);
 
 #endif

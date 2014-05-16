@@ -19,7 +19,7 @@ This package is currently in active development. Your comments, suggestions and 
 Gregor Kastner \email{gregor.kastner@wu.ac.at}
 }
 \references{
-Kastner, G. and Frühwirth-Schnatter, S. (2013). Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC estimation of stochastic volatility models. \emph{Computational Statistics and Data Analysis}, \url{http://dx.doi.org/10.1016/j.csda.2013.01.002}.
+Kastner, G. and Frühwirth-Schnatter, S. (2014). Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC estimation of stochastic volatility models. \emph{Computational Statistics and Data Analysis}, \url{http://dx.doi.org/10.1016/j.csda.2013.01.002}.
 
 Yu, Y. and Meng, X.-L. (2011). To Center or Not to Center: That is Not the Question---An Ancillarity-Suffiency Interweaving Strategy (ASIS) for Boosting MCMC Efficiency. \emph{Journal of Computational and Graphical Statistics}, \bold{20}, 531--570.
 }

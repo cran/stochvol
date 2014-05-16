@@ -94,18 +94,18 @@ void backwardAlg(const Rcpp::NumericVector & chol_diag, const Rcpp::NumericVecto
 
 // c)
 // draws length(r) RVs, expects the non-normalized CDF mixprob
-void invTransformSampling(const Rcpp::NumericMatrix & mixprob, int * r) {
- int T = mixprob.ncol(), rows = mixprob.nrow(), index;
+void invTransformSampling(const double * const mixprob, int * r, int T) {
+ int index;
  Rcpp::NumericVector innov = Rcpp::runif(T); 
  double temp;
  bool larger, smaller;
  for (int j = 0; j < T; j++) {
-  index = (rows-1)/2;  // start searching in the middle
-  temp = innov[j]*mixprob(rows-1, j);  // current (non-normalized) value
+  index = (10-1)/2;  // start searching in the middle
+  temp = innov[j]*mixprob[9 + 10*j];  // current (non-normalized) value
   larger = false;  // indicates that we already went up
   smaller = false; // indicates that we already went down
   while(true) {
-   if (temp > mixprob(index, j)) {
+   if (temp > mixprob[index +  10*j]) {
     if (smaller == true) {
      index++;
      break;
