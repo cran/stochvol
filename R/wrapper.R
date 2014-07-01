@@ -243,7 +243,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  res <- .Call("sampler", y, draws, burnin, priormu[1], priormu[2]^2,
 	      priorphi[1], priorphi[2], priorsigma, thinlatent, thintime,
 	      startpara, startlatent, quiet, 3L, 2L, 10^8, 10^12,
-	      -1, TRUE, FALSE, 0, PACKAGE = "stochvol")
+	      -1, TRUE, FALSE, 0, FALSE, PACKAGE = "stochvol")
 
  res$para <- t(res$para[-1,,drop=FALSE])
  rownames(res$para) <- names(res$para) <- c("mu", "phi", "sigma")

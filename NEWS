@@ -1,3 +1,12 @@
+Changes in Version 0.8-4:
+  - Fixed a bug introduced in version 0.8-2, where I forgot to let
+    .svsample know about the changes in update(...). Thanks to Keiran
+    Thompson for pointing this out.
+  - References updated.
+
+Changes in Version 0.8-3:
+  - Minor changes in vignette.
+
 Changes in Version 0.8-2
   - update(...) now takes an additional boolean argument preventing
     an update of mu (but instead hold mu = 0 fixed). This feature is
