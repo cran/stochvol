@@ -26,7 +26,7 @@ svsim(len, mu = -10, phi = 0.98, sigma = 0.2)
 }
 
 \details{
- This function draws an initial log-volatily \code{h_0} from the stationary distribution of the AR(1) process and iteratively generates \code{h_1,...,h_T}. Finally, the ``log-returns'' \code{y ~ N(0, exp(h/2))} are simulated.
+ This function draws an initial log-volatily \code{h_0} from the stationary distribution of the AR(1) process and iteratively generates \code{h_1,...,h_n}. Finally, the ``log-returns'' \code{y ~ N(0, exp(h/2))} are simulated.
 }
 
 \value{

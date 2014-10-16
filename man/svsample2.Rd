@@ -1,14 +1,15 @@
 \encoding{UTF-8}
-\name{.svsample}
+\name{svsample2}
+\alias{svsample2}
 \alias{.svsample}
 \title{
 Minimal overhead version of \code{\link{svsample}}.
 }
 \description{
- \code{.svsample} is a minimal overhead version of \code{\link{svsample}} with slightly different default arguments and a simplified return value structure. It is intended to be used mainly for one-step updates where speed is an issue, e.g., as a plug-in into other MCMC samplers. Note that absolutely no input checking is performed, thus this function is to be used with proper care!
+ \code{svsample2} is a minimal overhead version of \code{\link{svsample}} with slightly different default arguments and a simplified return value structure. It is intended to be used mainly for one-step updates where speed is an issue, e.g., as a plug-in into other MCMC samplers. Note that absolutely no input checking is performed, thus this function is to be used with proper care!
 }
 \usage{
-.svsample(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5),
+svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5),
 	  priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1,
 	  quiet = TRUE, startpara, startlatent)
 }
@@ -55,7 +56,7 @@ Minimal overhead version of \code{\link{svsample}}.
 \value{
 A list with three components:
 \item{para}{\code{3} times \code{draws} matrix containing the parameter draws.}
-\item{latent}{\code{length(y)} times \code{draws} matrix containing draws of the latent variables \code{h_1, \dots, h_T}}.
+\item{latent}{\code{length(y)} times \code{draws} matrix containing draws of the latent variables \code{h_1, \dots, h_n}}.
 \item{latent0}{Vector of length \code{draws} containing the draw(s) of the initial latent variable \code{h_0}.}
 }
 \author{
@@ -67,11 +68,11 @@ As opposed to the ordinary \code{\link{svsample}}, the default values differ for
 }
 
 \note{
-An example will soon be provided in a vignette.
+Please refer to the package vignette for an example.
 }
 
 \section{Warning}{
-Expert use only! For most application, the use of \code{\link{svsample}} is recommended.
+Expert use only! For most applications, the use of \code{\link{svsample}} is recommended.
 }
 \seealso{
 \code{\link{svsample}}

@@ -5,7 +5,7 @@
 Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility (SV) Model
 }
 \description{
-\code{svsample} simulates from the joint posterior distribution of the SV parameters \code{mu}, \code{phi}, and \code{sigma}, along with the latent log-volatilities \code{h_0,...,h_T} and returns the MCMC draws.
+\code{svsample} simulates from the joint posterior distribution of the SV parameters \code{mu}, \code{phi}, and \code{sigma}, along with the latent log-volatilities \code{h_0,...,h_n} and returns the MCMC draws.
 }
 \usage{
 svsample(y, draws = 10000, burnin = 1000, priormu = c(0, 100),
@@ -88,13 +88,13 @@ The value returned is a list object of class \code{svdraws} holding
 To display the output, use \code{print}, \code{summary} and \code{plot}. The \code{print} method simply prints the posterior draws (which is very likely a lot of output); the \code{summary} method displays the summary statistics currently stored in the object; the \code{plot} method \code{\link{plot.svdraws}} gives a graphical overview of the posterior distribution by calling \code{\link{volplot}}, \code{\link{traceplot}} and \code{\link{densplot}} and displaying the results on a single page. 
 }
 \references{
-Kastner, G. and Frühwirth-Schnatter, S. (2013). Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC estimation of stochastic volatility models. \emph{Computational Statistics and Data Analysis}, \url{http://dx.doi.org/10.1016/j.csda.2013.01.002}.
+Kastner, G. and Frühwirth-Schnatter, S. (2014). Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC estimation of stochastic volatility models. \emph{Computational Statistics & Data Analysis}, \bold{76}, 408--423, \url{http://dx.doi.org/10.1016/j.csda.2013.01.002}.
 }
 \author{
 Gregor Kastner \email{gregor.kastner@wu.ac.at}
 }
 \note{
- If \code{y} contains zeroes, you might want to consider de-meaning your returns. This will probably be automated in the future.
+ If \code{y} contains zeros, you might want to consider de-meaning your returns.
 }
 
 \seealso{

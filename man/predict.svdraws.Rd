@@ -21,7 +21,7 @@ Simulates draws from the predictive density of the latent log-volatility process
 }
 }
 \value{
- Returns an object of class \code{c("svpredict", "mcmc")} containing simulations from the predictive density of \code{h_(T+1),...,h_(T+steps)}.
+ Returns an object of class \code{c("svpredict", "mcmc")} containing simulations from the predictive density of \code{h_(n+1),...,h_(n+steps)}.
 }
 \author{
 Gregor Kastner \email{gregor.kastner@wu.ac.at}

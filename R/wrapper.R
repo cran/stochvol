@@ -190,7 +190,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  }
 
  if (!quiet) {
-  cat(paste("\nCalling ", parameterization, " MCMC sampler with ", draws+burnin, " iter. Series length T = ", length(y), ".\n",sep=""), file=stderr())
+  cat(paste("\nCalling ", parameterization, " MCMC sampler with ", draws+burnin, " iter. Series length is ", length(y), ".\n",sep=""), file=stderr())
   flush.console()
  }
 
@@ -238,7 +238,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
 
 # This function does not check input nor converts the result to coda objects
 
-.svsample <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1, quiet = TRUE, startpara, startlatent) {
+svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1, quiet = TRUE, startpara, startlatent) {
 
  res <- .Call("sampler", y, draws, burnin, priormu[1], priormu[2]^2,
 	      priorphi[1], priorphi[2], priorsigma, thinlatent, thintime,
@@ -249,3 +249,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  rownames(res$para) <- names(res$para) <- c("mu", "phi", "sigma")
  res
 }
+
+# Note: .svsample is deprecated and will be faded out, use svsample2 instead
+
+.svsample <- svsample2

@@ -4,8 +4,6 @@ import(methods)
 importFrom(Rcpp, evalCpp)
 import(coda) 
 
-#exportPattern("^[[:alpha:]]+")
-
 export(
  "svsim",
  "svsample",
@@ -21,7 +19,8 @@ export(
  "volplot",
  "predict.svdraws",
  "plot.svdraws",
- ".svsample",
+ "svsample2",
+ ".svsample", # replaced by svsample2, to be faded out
  "logret"
 )
 

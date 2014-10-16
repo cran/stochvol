@@ -21,7 +21,9 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   const SEXP truncnormal_in, const SEXP offset_in,
   const SEXP dontupdatemu_in) {
 
- RNGScope scope;       // just in case no seed has been set at R level
+ //RNGScope scope;       // just in case no seed has been set at R level
+ GetRNGstate(); // "by hand" because RNGScope isn't save if return
+                // variables are declared afterwards
 
  // convert SEXP into Rcpp-structures (no copy at this point)
  NumericVector y(y_in), startvol(startvol_in);
@@ -131,21 +133,21 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   update(data, &curpara(0), &h(0), h0, &mixprob(0,0), &r(0), centered_baseline, C0, cT,
          Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv, Gammaprior,
 	 truncnormal, MHcontrol, MHsteps, parameterization, dontupdatemu);
-  /* 
-  Rprintf("mixind  after:  %i\n", r(2));
+   
+ /* Rprintf("mixind  after:  %i\n", r(2));
    Rprintf("mixprob after:  %f\n", mixprob(5,0));
    Rprintf("curpara after:  %f\n", curpara(1));
    Rprintf("h0      after: %f\n", h0);
    Rprintf("h       after:  %f\n", h(2));
    Rprintf("data    after:  %f\n\n", data(5));
-*/
+   */
 
- 
   // storage:
   if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store h
    store_h(&h(0), &hstore(0, (i-burnin)/thin), timethin, hstorelength,
             h0, &h0store((i-burnin)/thin), curpara, centered_baseline);
   }
+//  Rprintf("hSTORE  after:  %f\n", hstore(2, (i-burnin)/thin));
   mu[i+1] = curpara[0];
   phi[i+1] = curpara[1];
   sigma2inv[i+1] = 1/(curpara[2]*curpara[2]);
@@ -636,5 +638,6 @@ Rcpp::NumericVector regressionNoncentered(
  if (Rcpp::as<double>(Rcpp::runif(1)) < expR) phi = phi_prop;
 
  Rcpp::NumericVector ret = Rcpp::NumericVector::create(mu, phi, fabs(sigma));
+ PutRNGstate();
  return ret;
 }
