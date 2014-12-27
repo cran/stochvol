@@ -1,3 +1,8 @@
+Changes in Version 0.9-1:
+  - Fixed typos in vignette.
+  - Added additional results in Table 1 of vignette.
+  - Minor changes in DESCRIPTION to adhere to CRAN style guide.
+
 Changes in Version 0.9-0:
   - Requires now Rcpp >= 0.11.0 and consequently R >= 3.0.0.
   - Replaced RNGScope in sampler.cpp by "manual" GetRNGstate() and
@@ -11,7 +16,7 @@ Changes in Version 0.9-0:
   - Substantial rewrite of vignette, especially Section 5; includes now
     a comparison of SV and GARCH.
   - Updates and corrections in .Rd files.
-  - Added some info when package is loaded.
+  - Added some info when package is attached.
   - Sample size is now denoted as "n" instead of "T", in order to avoid
     confusion with "TRUE" and/or the transpose symbol.
 

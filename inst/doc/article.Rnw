@@ -216,7 +216,7 @@ For specifying the size of the burn-in, the parameter \code{burnin} is provided.
  Three thinning parameters are available which all are $1$ if not specified otherwise. The first one, \code{thinpara}, is the denominator in the fraction of parameter draws (i.e., draws of $\allpara$) that are stored. E.g., if \code{thinpara} equals $10$, every $10$th draw is kept. The default parameter thinning value of $1$ means that all draws are saved. The second thinning parameter, \code{thinlatent}, acts in the same way for the latent variables $\hsvm$. The third thinning parameter, \code{thintime}, refers to thinning with respect to the time dimension of the latent volatility.
 In the case that \code{thintime} is greater than 1, not all elements of $\hsvm$ are stored, e.g., for \code{thintime} equaling $10$, only the draws of $\hsv_1, \hsv_{11}, \hsv_{21}, \dots$ (and $\hsv_0$) are kept.
 
-Another configuration argument is \code{quiet} which defaults to \code{FALSE}. If set to \code{TRUE}, all output during sampling (progress bar, status messages) is omitted. The arguments \code{startpara} and \code{startlatent} are optional starting values for the parameter vector $\allpara$ and the latent variables $\hsvm$, respectively. All other configuration parameters are summarized in the argument \code{expert}, because it is not very likely that the end-user needs to mess with the defaults.\footnote{Examples of configurations that can be changed with the \code{expert}-argument include the specification of the (baseline) parameterization ({\it centered} or {\it noncentered}) and the possibility to turn off interweaving. Moreover, some algorithmic details such as the number of blocks used for the parameter updates or the possibility of using a random walk Metropolis-Hastings proposal (instead of the default independence proposal) can be found here.} Please refer to the package documentation and \cite{kas-fru:anc} for details.
+Another configuration argument is \code{quiet} which defaults to \code{FALSE}. If set to \code{TRUE}, all output during sampling (progress bar, status messages) is omitted. The arguments \code{startpara} and \code{startlatent} are optional starting values for the parameter vector $\allpara$ and the latent variables $\hsvm$, respectively. All other configuration parameters are summarized in the argument \code{expert}, because it is not very likely that the end-user needs to mess with the defaults.\footnote{Examples of configurations that can be changed with the \code{expert}-argument include the specification of the (baseline) parameterization (either \emph{centered} or \emph{noncentered}) and the possibility to turn off interweaving. Moreover, some algorithmic details such as the number of blocks used for the parameter updates or the possibility of using a random walk Metropolis-Hastings proposal (instead of the default independence proposal) can be found here.} Please refer to the package documentation and \cite{kas-fru:anc} for details.
 
 Any further arguments (\code{\dots}) are forwarded to \code{updatesummary}, controlling the type of summary statistics that are calculated for the posterior draws.
 
@@ -1067,6 +1067,19 @@ Concluding this somewhat anecdotal prediction exercise, we would like to note th
   GBP & 8568 & 8549 & 8218 \\
   HKD & 7907 & 7897 & 7728 \\
   IDR & 7697 & 7662 & 7269 \\
+  JPY & 7607 & 7586 & 7280 \\
+  KRW & 7766 & 7749 & 7188 \\
+  MXN & 7536 & 7507 & 7055 \\
+  MYR & 8082 & 8064 & 7928 \\
+  NOK & 8648 & 8616 & 8331 \\
+  NZD & 7619 & 7587 & 7440 \\
+  PHP & 7890 & 7862 & 7654 \\
+  PLN & 8126 & 8094 & 7727 \\
+  RON & 9011 & 8880 & 8255 \\
+  RUB & 8664 & 8617 & 8146 \\
+  SEK & 9110 & 9101 & 8648 \\
+  SGD & 8540 & 8529 & 8308 \\
+  THB & 7867 & 7844 & 7692 \\
   \hline
   USD & 7878 & 7868 & 7701 \\
   USD [AR(0)]\tablefootnote{These results refer to the analysis of log returns by means of a intercept-only model, i.e., AR(0).}
