@@ -1,5 +1,14 @@
+Changes in Version 1.0.0:
+  - First stable release.
+  - Minor stylistic changes in package vignette.
+  - Updated CITATION file.
+
+Changes in Version 0.9-2:
+  - Fixed some typographical errors in help files. Thanks to Angela Bitto
+    for pointing these out.
+
 Changes in Version 0.9-1:
-  - Fixed typos in vignette.
+  - Fixed typographical errors in vignette.
   - Added additional results in Table 1 of vignette.
   - Minor changes in DESCRIPTION to adhere to CRAN style guide.
 

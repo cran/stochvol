@@ -7,7 +7,7 @@ usePreCalcResults <- TRUE
 usePreCalcResultsExtra <- FALSE 
 @
 
-%\VignetteIndexEntry{Dealing With Stochastic Volatility in Time Series Using the R Package stochvol}
+%\VignetteIndexEntry{Dealing with Stochastic Volatility in Time Series Using the R Package stochvol}
 %\VignetteKeyword{Bayesian inference, Markov chain Monte Carlo (MCMC), auxiliary mixture sampling, ancillarity-sufficiency interweaving strategy (ASIS), state-space model, heteroskedasticity, financial time series}
 
 \documentclass[article, nojss]{jss}
@@ -33,7 +33,7 @@ usePreCalcResultsExtra <- FALSE
 \author{Gregor Kastner\\WU Vienna University of Economics and Business}
 \title{Dealing with Stochastic Volatility in Time Series Using the \proglang{R} Package \pkg{stochvol}}
 %\Shorttitle{The \proglang{R} package \pkg{stochvol} (DRAFT VERSION)} %% a short title (if necessary)
-\Plaintitle{Dealing With Stochastic Volatility in Time Series Using the R Package stochvol} %% without formatting
+\Plaintitle{Dealing with Stochastic Volatility in Time Series Using the R Package stochvol} %% without formatting
 
 %% for pretty printing and a nice hypersummary also set:
 \Plainauthor{Gregor Kastner} %% comma-separated
@@ -44,7 +44,7 @@ The \proglang{R} package \pkg{stochvol} provides a fully Bayesian implementation
 It utilizes Markov chain Monte Carlo (MCMC) samplers to conduct inference by obtaining draws from the posterior distribution of parameters and latent variables which can then be used for predicting future volatilities. The package can straightforwardly be employed as a stand-alone tool; moreover, it allows for easy incorporation into other MCMC samplers. The main focus of this paper is to show the functionality of \pkg{stochvol}. In addition, it provides a brief mathematical description of the model, an overview of the sampling schemes used, and several illustrative examples using exchange rate data.
 }
 \Keywords{Bayesian inference, Markov chain Monte Carlo (MCMC), auxiliary mixture sampling, ancillarity-sufficiency interweaving strategy (ASIS), state-space model, heteroskedasticity, financial time series}
-\Plainkeywords{Bayesian inference, Markov chain Monte Carlo (MCMC), auxiliary mixture sampling, ancillarity-sufficiency interweaving strategy (ASIS), state-space model, heteroskedasticity, financial time series}
+%\Plainkeywords{Bayesian inference, Markov chain Monte Carlo (MCMC), auxiliary mixture sampling, ancillarity-sufficiency interweaving strategy (ASIS), state-space model, heteroskedasticity, financial time series}
 %% at least one keyword must be supplied
 
 %% publication information
@@ -63,10 +63,13 @@ It utilizes Markov chain Monte Carlo (MCMC) samplers to conduct inference by obt
   Institute for Statistics and Mathematics\\
   Department of Finance, Accounting and Statistics\\
   WU Vienna University of Economics and Business\\
+%  Building D4, Level 4\\
   Welthandelsplatz 1\\
   1020 Vienna, Austria\\
-  E-mail: \email{gregor.kastner@wu.ac.at}
-%  URL: \url{http://eeecon.uibk.ac.at/~zeileis/}
+%  Telephone: +43/1/31336-5593\\
+%  Fax: +43/1/31336-90-5593\\
+  E-mail: \email{gregor.kastner@wu.ac.at}\\
+  URL: \url{http://www.wu.ac.at/statmath/en/faculty_staff/faculty/gkastner/}
 }
 %% It is also possible to add a telephone and fax number
 %% before the e-mail in the following format:
@@ -88,16 +91,19 @@ It utilizes Markov chain Monte Carlo (MCMC) samplers to conduct inference by obt
 options(prompt = 'R> ', continue = '+  ')
 @
 
+\section*{Preface}
+This vignette corresponds to a forthcoming article of the same name in the Journal of Statistical Software. At the time of this writing, the vignette and the published article coincide; nevertheless, this version might receive minor updates over time. To cite, please use \cite{kas:dea}. Further information about citing \pkg{stochvol} can be obtained in \proglang{R} by installing the package, e.g., through \code{install.packages("stochvol")}, and typing \code{citation("stochvol")}.
+
 \section{Introduction}
 Returns -- in particular financial returns -- are commonly analyzed by estimating and predicting potentially time-varying volatilities. This focus has a long history, dating back at least to \cite{mar:por} who investigates portfolio construction with optimal expected return-variance trade-off. In his article, he proposes rolling-window-type estimates for the instantaneous volatilities, but already then recognizes the potential for ``better methods, which take into account more information''.
 
-One approach is to model the evolution of volatility deterministically, i.e., through the (G)ARCH class of models. After the groundbreaking papers of \cite{eng:aut} and \cite{bol:gen}, these models have been generalized in numerous ways and applied to a vast amount of real-world problems. As an alternative, \cite{tay:fin} proposes in his seminal work to model the volatility probabilistically, i.e., through a state-space model where the logarithm of the squared volatilities -- the latent states -- follow an autoregressive process of order one. Over time, this specification became known as the \emph{stochastic volatility (SV)} model. Even though several papers \citep[e.g.,][]{jac-etal:bayJBES, ghy-etal:sto, kim-etal:sto} provide early evidence in favor of using SV, these models have found comparably little use in applied work. This obvious discrepancy is discussed in \cite{bos:rel} who points out two reasons: the variety (and potential incompatibility) of estimation methods for SV models -- whereas the many variants of the GARCH model have basically a single estimation method -- and the lack of standard packages implementing these methods.
+One approach is to model the evolution of volatility deterministically, i.e., through the (G)ARCH class of models. After the groundbreaking papers of \cite{eng:aut} and \cite{bol:gen}, these models have been generalized in numerous ways and applied to a vast amount of real-world problems. As an alternative, \cite{tay:fin} proposes in his seminal work to model the volatility probabilistically, i.e., through a state-space model where the logarithm of the squared volatilities -- the latent states -- follow an autoregressive process of order one. Over time, this specification became known as the \emph{stochastic volatility (SV)} model. Even though several papers \citep[e.g.,][]{jac-etal:bayJBES, ghy-etal:sto, kim-etal:sto} provide early evidence in favor of using SV, these models have found comparably little use in applied work. This obvious discrepancy is discussed in \cite{bos:rel} who points out two reasons: the variety (and potential incompatibility) of estimation methods for SV models -- whereas the many variants of the GARCH model have basically a single estimation method -- and the lack of standard software packages implementing these methods.
  
 %While there are literally thousands of applications of GARCH, for SV, this number is far lower. Two reasons for this relative lack of applied work using SV are apparent. First, there are as of yet no standard packages for estimating SV models, whereas for GARCH, most statistical packages have a wealth of options for incorporating GARCH effects. A second difference seems to be that GARCH has many variants of the model \citep{bol:glo}, with basically a single estimation method for all of them. For SV, there are few variants of the model, but a full series of estimation methods.
 
  In \cite{kas-fru:anc}, the former issue is thoroughly investigated and an efficient MCMC estimation scheme
 %using techniques such as sampling AWOL \citep[``all without a loop'', adapted from][]{rue:fas, mcc-etal:sim} and ASIS \citep[``ancillarity-sufficiency interweaving strategy'', adapted from][]{yu-men:cen}, an
-is proposed. The paper at hand and the corresponding package \pkg{stochvol} \citep{r:sto} for \proglang{R} \citep{r:r} are crafted to cope with the latter problem: the apparent lack of ready-to-use packages for efficiently estimating SV models.
+is proposed. The paper at hand and the corresponding package \pkg{stochvol} \citep{r:sto} for \proglang{R} \citep{r:r} are crafted to cope with the latter problem: the apparent lack of ready-to-use software packages for efficiently estimating SV models.
 
 \section{Model specification and estimation}
 
@@ -109,7 +115,7 @@ Let $\yb = (y_1, y_2, \dots, y_n)^\top$ be a vector of returns with mean zero. T
 %(note that there are just as many data points as there are variances!)
 this variance is not allowed to vary unrestrictedly with time. Rather, its logarithm is assumed to follow an autoregressive process of order one. Note that this feature is fundamentally different to GARCH-type models where the time-varying volatility is assumed to follow a deterministic instead of a stochastic evolution.
 
-The SV model (in its centered parameterization) is thus given through
+The SV model can thus be conveniently expressed in hierarchical form. In its centered parameterization, it is given through
 \begin{eqnarray}  
  \label{c1}
  y_{t}|\hsv_t &\sim&  \Normal{0, \exp{\hsv_{t}}},%\error_{t},% \qquad \error_{t} \sim \Normal{0,1},
@@ -120,9 +126,9 @@ The SV model (in its centered parameterization) is thus given through
 \hsv_0|\mu,\phi,\sigmapar &\sim& \Normal{\mu,\sigmapartwo/(1-\phi^2)},
 \end{eqnarray}
 
-where $\Normal{\mu, \sigmapartwo}$ denotes the normal distribution with mean $\mu$ and variance $\sigmapartwo$. We refer to $\allpara = (\mupar, \phipar, \sigmapar)^\top$ as the vector of \emph{parameters}: the \emph{level} of log-variance $\mupar$, the \emph{persistence} of log-variance $\phipar$, and the \emph{volatility} of log-variance $\sigmapar$. The process $\hsvm=(\hsv_{0}, \hsv_{1}, \ldots,\hsv_{n})$ appearing in state equations (\ref{c2}) and (\ref{c3}) is unobserved and usually interpreted as the latent time-varying \emph{volatility process} (more precisely, the log-variance process). Note that the initial state $\hsv_0$ is distributed according to the stationary distribution of the autoregressive process of order one.
+where $\Normal{\mu, \sigmapartwo}$ denotes the normal distribution with mean $\mu$ and variance $\sigmapartwo$. We refer to $\allpara = (\mupar, \phipar, \sigmapar)^\top$ as the vector of \emph{parameters}: the \emph{level} of log-variance $\mupar$, the \emph{persistence} of log-variance $\phipar$, and the \emph{volatility} of log-variance $\sigmapar$. The process $\hsvm=(\hsv_{0}, \hsv_{1}, \ldots,\hsv_{n})$ appearing in Equation~\ref{c2} and Equation~\ref{c3} is unobserved and usually interpreted as the latent time-varying \emph{volatility process} (more precisely, the log-variance process). Note that the initial state $\hsv_0$ appearing in Equation~\ref{c3} is distributed according to the stationary distribution of the autoregressive process of order one.
 
-\subsection{Prior distributions}
+\subsection{Prior distribution}
 \label{priors}
 
 To complete the model setup, a prior distribution for the parameter vector $\allpara$ needs to be specified. Following \cite{kim-etal:sto}, we choose independent components for each parameter, i.e., $p(\allpara) = p(\mupar)p(\phipar)p(\sigmapar)$.
@@ -144,7 +150,7 @@ This obviously implies that the prior expectation of $\phipar$ depends only on t
 
 For the volatility of log-variance $\sigmapar \in \mathbb{R}^+$, we choose $\sigmapartwo \sim B_{\sigmapar}\times \chi^2_1=\Gammad{1/2,1/2B_{\sigmapar}}$. This choice is motivated by \cite{fru-wag:sto} who equivalently stipulate the prior for $\pm \sqrt { \sigmapartwo}$ to follow a centered normal distribution, i.e., $\pm \sqrt { \sigmapartwo} \sim \Normal{0,B_{\sigmapar}}$. As opposed to the more common Inverse-Gamma prior for $\sigmapartwo$, this prior is not conjugate in the usual sampling scheme. However, it does not bound $\sigmapartwo$ away from zero a priori. The choice of the hyperparameter $B_{\sigmapar}$ turns out to be of minor influence in empirical applications as long as it is not set too small.
 
-\subsection{MCMC Sampling}
+\subsection{MCMC sampling}
 
 An MCMC algorithm such as the one implemented in the package \pkg{stochvol} provides its user with draws from the posterior distribution of the desired random variables; in our case with the latent log-variances $\hsvm$ and the parameter vector $\allpara$. Because these draws are usually dependent, Bayesian inference via MCMC may require careful design of the algorithm and attentive investigation of the draws obtained.
 
@@ -154,11 +160,11 @@ In order to avoid the cost of code interpretation within each MCMC iteration, th
 
 A novel and crucial feature of the algorithm implemented in \pkg{stochvol} is the usage of a variant of the ``ancillarity-sufficiency interweaving strategy'' (ASIS) which has been brought forward in the general context of state-space models by \cite{yu-men:cen}. ASIS exploits the fact that for certain parameter constellations sampling efficiency improves substantially when considering a non-centered version of a state-space model.
 This is commonly referred to as a reparameterization issue and dealt with extensively in scholarly literature; for an early reference see, e.g., \cite{hil-smi:par}.
-In the case of the SV model, a move of this kind can be achieved by moving the level $\mupar$ and/or the volatility of log-variance $\sigmapar$ from the state equation (\ref{c2}) to the observation equation (\ref{c1}) through a simple reparameterization of the latent process $\hsvm$. However, in the case of the SV model, it turns out that no single superior parameterization exists. Rather, for some underlying processes, the standard parameterization yields superior results, while for other processes non-centered versions are better. To overcome this issue, the parameter vector $\allpara$ is sampled twice: once in the centered and once in a noncentered parameterization. This method of ``combining best of different worlds'' allows for efficient inference regardless of the underlying process with one algorithm. For more details about the algorithm and empirical results concerning sampling efficiency, see \cite{kas-fru:anc}.
+For the model at hand, a move of this kind can be achieved by transferring the level of log-variance $\mupar$ and/or the volatility of log-variance $\sigmapar$ from the state process (Equations~\ref{c2}~and~\ref{c3}) to the observation process (Equation~\ref{c1}) through a simple reparameterization of $\hsvm$. However, in the case of the SV model, it turns out that no single superior parameterization exists. Rather, for some underlying processes, the standard parameterization yields superior results, while for other processes non-centered versions are better. To overcome this issue, the parameter vector $\allpara$ is sampled twice: once in the centered and once in a noncentered parameterization. This method of ``combining best of different worlds'' allows for efficient inference regardless of the underlying process with one algorithm. For more details about the algorithm and empirical results concerning sampling efficiency, see \cite{kas-fru:anc}.
 
 \section[The stochvol package]{The \pkg{stochvol} package}
 
-The usual stand-alone approach to fitting SV models with \pkg{stochvol} exhibits the following workflow: (1) Prepare the data, (2) specify the prior distributions and configuration parameters, (3) run the sampler, (4) assess the output and display the results. All these steps are described in more detail below, along with a worked example. For a stepwise incorporation of SV effects into other MCMC samplers, see Section \ref{other}.
+The usual stand-alone approach to fitting SV models with \pkg{stochvol} exhibits the following workflow: (1) Prepare the data, (2) specify the prior distributions and configuration parameters, (3) run the sampler, (4) assess the output and display the results. All these steps are described in more detail below, along with a worked example. For a stepwise incorporation of SV effects into other MCMC samplers, see Section~\ref{other}.
 
 \subsection{Preparing the data}
 \label{prep}
@@ -172,11 +178,11 @@ set.seed(123)
 library("stochvol")
 data("exrates")
 ret <- logret(exrates$USD, demean = TRUE)
-par(mfrow = c(2, 1), mar = c(1.9, 1.9, 1.9, .5), mgp = c(2, .6, 0))
-plot(exrates$date, exrates$USD, type = 'l', main = "Price of 1 EUR in USD")
-plot(exrates$date[-1], ret, type = 'l', main = "Demeaned log returns")
+par(mfrow = c(2, 1), mar = c(1.9, 1.9, 1.9, 0.5), mgp = c(2, 0.6, 0))
+plot(exrates$date, exrates$USD, type = "l",
+  main = "Price of 1 EUR in USD")
+plot(exrates$date[-1], ret, type = "l", main = "Demeaned log returns")
 @
-
 \begin{figure}[!ht]
 \begin{center}
  \includegraphics[width=\textwidth]{article-usd1}
@@ -211,7 +217,7 @@ plot(sim)
 
  The prior variance of log-variance hyperparameter $B_\sigmapar$ may be controlled through \code{priorsigma}. This argument defaults to \code{1} if not provided by the user. As discussed in Section~\ref{priors}, the exact choice of this value is usually not very influential in typical applications. In general, it should not be set too small unless there is a very good reason, e.g., explicit prior knowledge, to do so.
 
-For specifying the size of the burn-in, the parameter \code{burnin} is provided. It is the amount of MCMC iterations that are run but discarded to ensure convergence to the stationary distribution of the chain. The current default value for this parameter is $1000$ which has turned out to suffice in most situations. Nevertheless, the user is encouraged to check convergence carefully; see Section \ref{check} for more details. The amount of iterations which are run after burn-in can be specified through the parameter \code{draws}, currently defaulting to $10\,000$. Consequently, the sampler is run for a total of \code{burnin + draws} iterations.
+For specifying the size of the burn-in, the parameter \code{burnin} is provided. It is the amount of MCMC iterations that are run but discarded to ensure convergence to the stationary distribution of the chain. The current default value for this parameter is $1000$ which has turned out to suffice in most situations. Nevertheless, the user is encouraged to check convergence carefully; see Section~\ref{check} for more details. The amount of iterations which are run after burn-in can be specified through the parameter \code{draws}, currently defaulting to $10\,000$. Consequently, the sampler is run for a total of \code{burnin + draws} iterations.
 
  Three thinning parameters are available which all are $1$ if not specified otherwise. The first one, \code{thinpara}, is the denominator in the fraction of parameter draws (i.e., draws of $\allpara$) that are stored. E.g., if \code{thinpara} equals $10$, every $10$th draw is kept. The default parameter thinning value of $1$ means that all draws are saved. The second thinning parameter, \code{thinlatent}, acts in the same way for the latent variables $\hsvm$. The third thinning parameter, \code{thintime}, refers to thinning with respect to the time dimension of the latent volatility.
 In the case that \code{thintime} is greater than 1, not all elements of $\hsvm$ are stored, e.g., for \code{thintime} equaling $10$, only the draws of $\hsv_1, \hsv_{11}, \hsv_{21}, \dots$ (and $\hsv_0$) are kept.
@@ -226,29 +232,29 @@ At the heart of the package \pkg{stochvol} lies the function \code{svsample} whi
 
 <<eval=FALSE>>=
 res <- svsample(ret, priormu = c(-10, 1), priorphi = c(20, 1.1),
-                priorsigma = .1)
+  priorsigma = 0.1)
 @
 
 <<results=hide, echo=FALSE>>=
 if (usePreCalcResultsExtra) {
- load('vignette_sampling_draws1.RData')
+ load("vignette_sampling_draws1.RData")
 } else {
  res <- svsample(ret, priormu = c(-10, 1), priorphi = c(20, 1.1), priorsigma = .1)
- #save(res, file = 'vignette_sampling_draws1.RData')
+ #save(res, file = "vignette_sampling_draws1.RData")
 }
 @
 
-\begin{CodeOutput}
+\begin{Soutput}
 Calling GIS_C MCMC sampler with 11000 iter. Series length is 3139.
 
   0% [+++++++++++++++++++++++++++++++++++++++++++++++++++] 100%
 
-Timing (elapsed): 17.935 seconds.
-613 iterations per second.
+Timing (elapsed): 12.92 seconds.
+851 iterations per second.
 
 Converting results to coda objects... Done!
 Summarizing posterior draws... Done!
-\end{CodeOutput}
+\end{Soutput}
 
 As can be seen, this function calls the main MCMC sampler and converts its output to \pkg{coda}-compatible objects. The latter is done mainly for reasons of compatibility and in order to have straightforward access to the convergence diagnostics checks implemented there. Moreover, some summary statistics for the posterior draws are calculated. The return value of \code{svsample} is an object of type \code{svdraws} which is a named list with eight elements, holding (1) the parameter draws in \code{para}, (2) the latent log-volatilities in \code{latent}, (3) the initial latent log-volatility draw in \code{latent0}, (4) the data provided in \code{y}, (5) the sampling runtime in \code{runtime}, (6) the prior hyperparameters in \code{priors}, (7) the thinning values in \code{thinning}, and (8) summary statistics of these draws, alongside some common transformations thereof, in \code{summary}.
 
@@ -263,13 +269,13 @@ summary(res, showlatent = FALSE)
 
 There are several plotting functions specifically designed for objects of class \code{svsample} which are described in the following paragraphs.
  \begin{enumerate}
-  \item[(1)] \code{volplot}: Plots posterior quantiles of the latent volatilities in percent, i.e., $100\exp(h_t/2)$, over time. Apart from the mandatory \code{svsample}-object itself, this function takes several optional arguments. Only some are mentioned here; for an exhaustive list please see the corresponding help document accessible through \code{?volplot} or \code{help(volplot)}. Selected optional arguments that are commonly used include \code{forecast} for $n$-step-ahead volatility prediction, \code{dates} for labels on the $x$-axis, alongside some graphical parameters. The code snipped below shows a typical example and Figure~\ref{fig3} displays its output.
+  \item[(1)] \code{volplot}: Plots posterior quantiles of the latent volatilities in percent, i.e., empirical quantiles of the posterior distribution of $100\exp(h_t/2)$, over time. Apart from the mandatory \code{svsample}-object itself, this function takes several optional arguments. Only some are mentioned here; for an exhaustive list please see the corresponding help document accessible through \code{?volplot} or \code{help(volplot)}. Selected optional arguments that are commonly used include \code{forecast} for $n$-step-ahead volatility prediction, \code{dates} for labels on the $x$-axis, alongside some graphical parameters. The code snipped below shows a typical example and Figure~\ref{fig3} displays its output.
 
 <<usd3, fig=TRUE, include=FALSE, width=11, height=7>>=
 volplot(res, forecast = 100, dates = exrates$date[-1])
 @
 
-\begin{figure}[!ht]
+\begin{figure}[!htp]
 \begin{center}
  \includegraphics[width=\textwidth]{article-usd3}
  \caption{Visualization of estimated contemporaneous volatilities of EUR-USD exchange rates, as provided by \code{volplot}. If not specified otherwise, posterior medians and 5\%/95\% quantiles are plotted. The dotted lines on the right indicate predicted future volatilities.}
@@ -280,13 +286,13 @@ volplot(res, forecast = 100, dates = exrates$date[-1])
 In case the user wants to display different posterior quantiles, the \code{updatesummary} function has to be called first. See the code below for an example and Figure~\ref{fig4} for the corresponding plot.
  
 <<usd4, fig=TRUE, include=FALSE, width=11, height=7>>=
-res <- updatesummary(res, quantiles = c(.01, .1, .5, .9, .99))
+res <- updatesummary(res, quantiles = c(0.01, 0.1, 0.5, 0.9, 0.99))
 volplot(res, forecast = 100, dates = exrates$date[-1])
 @
 
 \begin{figure}[!htp]
 \begin{center}
- \includegraphics[width=.96\textwidth]{article-usd4}
+ \includegraphics[width=\textwidth]{article-usd4}
  \caption{As above, now with medians (black line) and 1\%/10\%/90\%/99\% quantiles (gray lines). This behavior can be achieved through a preceding call of \code{updatesummary}.}
  \label{fig4}
 \end{center}
@@ -301,7 +307,7 @@ paratraceplot(res)
  
 \begin{figure}[!htp]
 \begin{center}
- \includegraphics[width=.96\textwidth]{article-usd5}
+ \includegraphics[width=\textwidth]{article-usd5}
  \caption{Trace plots of posterior draws for the parameters $\mupar, \phipar, \sigmapar$.}
  %The underlying dataset is again EUR-USD exchange rates.}
  \label{fig5}
@@ -392,7 +398,7 @@ In \proglang{R}, this can straightforwardly be coded as follows:
 <<>>=
 set.seed(123456)
 n <- 1000
-beta.true <- c(.1, .5)
+beta.true <- c(0.1, 0.5)
 sigma.true <- 0.01
 X <- matrix(c(rep(1, n), rnorm(n, sd = sigma.true)), nrow = n)
 y <- rnorm(n, X %*% beta.true, sigma.true)
@@ -417,34 +423,26 @@ preDf <- c0 + n/2 + p/2
 \item Assign some storage space for holding the draws and set an initial value for $\sigmaepsextrasuper2$:
 <<>>=
 draws1 <- matrix(NA_real_, nrow = draws, ncol = p + 1)
-colnames(draws1) <- c(paste("beta", 0:(p-1), sep='_'), "sigma")
+colnames(draws1) <- c(paste("beta", 0:(p-1), sep = "_"), "sigma")
 sigma2draw <- 1
 @
 \item Run the main sampler: Iteratively draw from the conditional bivariate Gaussian distribution $\betab|\yb,\sigmaepsextrasuper2$, e.g., through the use of \pkg{mvtnorm} \citep{r:mvt}, and the conditional Inverse Gamma distribution $\sigmaepsextrasuper2|\yb,\betab$.
-<<eval=FALSE>>=
+<<>>=
 for (i in -(burnin-1):draws) {
- betadraw <- as.numeric(mvtnorm::rmvnorm(1, preMean,
-					 sigma2draw * preCov))
- tmp <- C0 + .5 * (crossprod(y - X %*% betadraw) +
- 		  crossprod((betadraw - b0), B0inv) %*%
-		   (betadraw - b0))
- sigma2draw <- 1 / rgamma(1, preDf, rate = tmp)
- if (i > 0) draws1[i,] <- c(betadraw, sqrt(sigma2draw))
+  betadraw <- as.numeric(mvtnorm::rmvnorm(1, preMean,
+    sigma2draw * preCov))
+  tmp <- C0 + 0.5 * (crossprod(y - X %*% betadraw) +
+    crossprod((betadraw - b0), B0inv) %*% (betadraw - b0))
+  sigma2draw <- 1 / rgamma(1, preDf, rate = tmp)
+  if (i > 0) draws1[i, ] <- c(betadraw, sqrt(sigma2draw))
 }
 @
-<<echo=FALSE>>=
-for (i in -(burnin-1):draws) {
- betadraw <- as.numeric(mvtnorm::rmvnorm(1, preMean, sigma2draw*preCov))
- tmp <- C0 + .5*(crossprod(y - X%*%betadraw) +
- 		 crossprod((betadraw - b0), B0inv) %*% (betadraw - b0))
- sigma2draw <- 1/rgamma(1, preDf, rate = tmp)
- if (i > 0) draws1[i,] <- c(betadraw, sqrt(sigma2draw))
-}
-@
-\item Finally, summarize and visualize the posterior draws:
+\item Calculate posterior means in order to obtain point estimates for the parameters:
 <<>>=
 colMeans(draws1)
 @
+
+\item Visualize the draws through \pkg{coda}'s native \code{plot} method:
 
 <<homo, echo=FALSE, fig=TRUE, include=FALSE, width=7.5, height=6>>=
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
@@ -458,7 +456,7 @@ plot(coda::mcmc(draws1))
 
 \begin{figure}[!ht]
 \begin{center}
-\includegraphics[width=.98\textwidth]{article-homo}
+\includegraphics[width=\textwidth]{article-homo}
 \caption{Trace plots and kernel density estimates for some draws from the marginal posterior distributions in the regression model with heteroskedastic errors. Underlying data is simulated with $\betab^\text{true}=(0.1, 0.5)^\top$, $\sigmaepsextrasuper{\text{true}} = 0.01$, $n=1000$.}
 \label{homodraws}
 \end{center}
@@ -493,13 +491,12 @@ priorsigma <- 1
  \item Assign some storage space for holding the draws and set initial values:
 <<>>=
 draws2 <- matrix(NA_real_, nrow = floor(draws / thinning),
-		 ncol = 3 + n + p)
+  ncol = 3 + n + p)
 colnames(draws2) <- c("mu", "phi", "sigma",
-		      paste("beta", 0:(p-1), sep = '_'),
-                      paste("h", 1:n, sep='_'))
+  paste("beta", 0:(p-1), sep = "_"), paste("h", 1:n, sep = "_"))
 betadraw <- c(0, 0)
-svdraw <- list(para = c(mu = -10, phi = .9, sigma = .2),
-	       latent = rep(-10, n))
+svdraw <- list(para = c(mu = -10, phi = 0.9, sigma = 0.2),
+  latent = rep(-10, n))
 @
  \item Run the main sampler, i.e., iteratively draw
   \begin{itemize}
@@ -508,27 +505,27 @@ svdraw <- list(para = c(mu = -10, phi = .9, sigma = .2),
   \end{itemize}
 <<eval=FALSE>>=
 for (i in -(burnin-1):draws) {
- ytilde <- y - X %*% betadraw
- svdraw <- svsample2(ytilde, startpara = para(svdraw),
-                     startlatent = latent(svdraw), priormu = priormu,
-                     priorphi = priorphi, priorsigma = priorsigma)
- normalizer <- as.numeric(exp(-latent(svdraw)/2))
- Xnew <- X * normalizer
- ynew <- y * normalizer
- Sigma <- solve(crossprod(Xnew) + B0inv)
- mu <- Sigma %*% (crossprod(Xnew, ynew) + B0inv %*% b0)
- betadraw <- as.numeric(mvtnorm::rmvnorm(1, mu, Sigma))
- if (i > 0 & i %% thinning == 0) { 
-  draws2[i/thinning, 1:3] <- para(svdraw)
-  draws2[i/thinning, 4:5] <- betadraw
-  draws2[i/thinning, 6:(n+5)] <- latent(svdraw)
- }
+  ytilde <- y - X %*% betadraw
+  svdraw <- svsample2(ytilde, startpara = para(svdraw),
+    startlatent = latent(svdraw), priormu = priormu,
+    priorphi = priorphi, priorsigma = priorsigma)
+  normalizer <- as.numeric(exp(-latent(svdraw) / 2))
+  Xnew <- X * normalizer
+  ynew <- y * normalizer
+  Sigma <- solve(crossprod(Xnew) + B0inv)
+  mu <- Sigma %*% (crossprod(Xnew, ynew) + B0inv %*% b0)
+  betadraw <- as.numeric(mvtnorm::rmvnorm(1, mu, Sigma))
+  if (i > 0 & i %% thinning == 0) { 
+    draws2[i/thinning, 1:3] <- para(svdraw)
+    draws2[i/thinning, 4:5] <- betadraw
+    draws2[i/thinning, 6:(n+5)] <- latent(svdraw)
+  }
 }
 @
 
 <<echo=FALSE>>=
 if (usePreCalcResults) {
- load('vignette_sampling_draws2.RData')
+ load("vignette_sampling_draws2.RData")
 } else {
 for (i in -(burnin-1):draws) {
 
@@ -557,33 +554,34 @@ for (i in -(burnin-1):draws) {
  #save(draws2selection, file = 'vignette_sampling_draws2.RData')
 }
 @
-\item Finally, summarize and visualize (some) posterior draws:
-<<eval=FALSE>>=
-colMeans(draws2[,4:8])
-@
-
-<<echo=FALSE>>=
-colMeans(draws2selection)
-@
+\item Finally, visualize and summarize (some) posterior draws:
 
 <<eval=FALSE>>=
-plot(coda::mcmc(draws2[,4:7]))
+plot(coda::mcmc(draws2[, 4:7]))
 @
 
 <<hetero, fig=TRUE, include=FALSE, echo=FALSE, results=hide, width=7.5, height=8>>=
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
-plot(coda::mcmc(draws2selection[,1:4]))
+plot(coda::mcmc(draws2selection[, 1:4]))
 @
 
 \begin{figure}[!ht]
  \begin{center}
-\includegraphics[width=.95\textwidth]{article-hetero}
+\includegraphics[width=\textwidth]{article-hetero}
 \caption{Trace plots and kernel density estimates
 %for draws from the marginal posterior distributions of the parameters
 in the regression model with heteroskedastic errors. Data is simulated with $\betab^\text{true}=(0.1, 0.5)^\top$, $h_1^\text{true} = -8.28$, $h_2^\text{true} = -8.50$, $n=1000$.}
 \label{heterodraws}
  \end{center}
 \end{figure}
+
+<<eval=FALSE>>=
+colMeans(draws2[, 4:8])
+@
+
+<<echo=FALSE>>=
+colMeans(draws2selection)
+@
 
 \end{itemize}
 
@@ -649,7 +647,7 @@ The samplers yield slightly different posteriors for $\betab$, visualized in Fig
 
 <<results=hide, echo=FALSE>>=
 if (usePreCalcResults) {
- load('vignette_sampling_realworld.RData')
+ load("vignette_sampling_realworld.RData")
 } else {
 set.seed(34567890)
 
@@ -678,12 +676,12 @@ C0 <- 0.001
 B0inv <- solve(B0)
 
 ## initialize some space to hold results:
-realres <- vector('list', 3)
+realres <- vector("list", 3)
 
 ## AR(1)-SV:
 realres[[1]] <- matrix(NA_real_, nrow = floor(draws/thinning), ncol = 3 + n + p)
-colnames(realres[[1]]) <- c("mu", "phi", "sigma", paste("beta", 0:(p-1), sep='_'),
-			   paste("h", 1:n, sep='_'))
+colnames(realres[[1]]) <- c("mu", "phi", "sigma", paste("beta", 0:(p-1), sep="_"),
+			   paste("h", 1:n, sep="_"))
 
 ## some indicators:
 paras <- 1:3
@@ -730,7 +728,7 @@ preDf <- c0 + n/2 + p/2
 
 ## allocate space:
 realres[[2]] <- matrix(as.numeric(NA), nrow=floor(draws/thinning), ncol=p+1)
-colnames(realres[[2]]) <- c(paste("beta", 0:(p-1), sep='_'), "sigma")
+colnames(realres[[2]]) <- c(paste("beta", 0:(p-1), sep="_"), "sigma")
 
 ## starting values:
 betadraw <- rep(0, p)
@@ -759,8 +757,8 @@ for (i in -(burnin-1):draws) {
 ## AR(1)-GARCH(1,1):
 ## allocate space:
 realres[[3]] <- matrix(NA_real_, nrow = floor(draws/thinning), ncol = 3 + n + p)
-colnames(realres[[3]]) <- c("a_0", "a_1", "b_1", paste("beta", 0:(p-1), sep='_'),
-			   paste("sigma", 1:n, sep='_'))
+colnames(realres[[3]]) <- c("a_0", "a_1", "b_1", paste("beta", 0:(p-1), sep="_"),
+			   paste("sigma", 1:n, sep="_"))
 
 ## some auxiliary functions:
 loglik <- function(y, s2) {
@@ -863,7 +861,7 @@ standresidmeans <- rowMeans((y - predmeans)/exp(t(realres[[1]][,6:ncol(realres[[
 predmeans3 <- tcrossprod(X, realres[[3]][,4:5])
 standresidmeans3 <- rowMeans((y - predmeans3)/t(realres[[3]][,6:ncol(realres[[3]])]))
 
-realresselection <- vector('list', 3)
+realresselection <- vector("list", 3)
 realresselection[[1]] <- realres[[1]][,c('beta_0', 'beta_1')]
 realresselection[[2]] <- realres[[2]][,c('beta_0', 'beta_1')]
 realresselection[[3]] <- realres[[3]][,c('beta_0', 'beta_1')]
@@ -972,7 +970,7 @@ In the SV errors case, Equation~\ref{preddens} is a $(n+p+3)$-dimensional integr
 \end{equation}
 %
 where $\unobs^{(m)}_{[1:t]}$ stands for the $m$\textsuperscript{th} draw from the respective posterior distribution up to time $t$. If Equation~\ref{preddensMC} is evaluated at $x=y_{t+1}^o$, we refer to it as the (one-step-ahead) \emph{predictive likelihood} at time $t+1$, denoted $\PL_{t+1}$.
-Moreover, draws from (\ref{preddens}) can be obtained by simulating values $\y_{t+1}^{(m)}$ from the distribution given through the density $p(\y_{t+1}|\yb^o_{[1:t]}, \unobs^{(m)}_{[1:t]})$, the summands of Equation~\ref{preddensMC}.
+Moreover, draws from the posterior predictive distribution can be obtained by simulating values $\y_{t+1}^{(m)}$ from the distribution given through the density $p(\y_{t+1}|\yb^o_{[1:t]}, \unobs^{(m)}_{[1:t]})$, the summands of Equation~\ref{preddensMC}.
 
 For the model at hand, the predictive density and likelihood can thus be computed through the following
 
@@ -1002,7 +1000,7 @@ used for evaluating model evidence. It can straightforwardly be decomposed into 
 \[
 \log \ML = \log p(\yb^o) = \log \prod_{t=1}^n p(\y_t^o|\yb_{[1:t-1]}^o) = \sum_{t=1}^n \log \PL_{t}.
 \]
-Thus, Algorithm \ref{predlikalg} provides a conceptually simple way of computing the marginal likelihood. However, these computations are quite costly in terms of CPU time, as they require an individual model fit for each of the $n$ points in time. On the other hand, due to the embarrassingly parallel nature of the task and because of today's comparably easy access to distributed computing environments, this burden becomes manageable. E.g., the computations for the stochastic volatility analysis in this paper have been conducted in less than one hour, using 25 IBM dx360M3 nodes within a cluster of workstations. Implementation in \proglang{R} was achieved through the packages \pkg{parallel} \citep{r:r} and \pkg{snow} \citep{r:sno}.
+Thus, Algorithm~\ref{predlikalg} provides a conceptually simple way of computing the marginal likelihood. However, these computations are quite costly in terms of CPU time, as they require an individual model fit for each of the $n$ points in time. On the other hand, due to the embarrassingly parallel nature of the task and because of today's comparably easy access to distributed computing environments, this burden becomes manageable. E.g., the computations for the stochastic volatility analysis in this paper have been conducted in less than one hour, using 25 IBM dx360M3 nodes within a cluster of workstations. Implementation in \proglang{R} was achieved through the packages \pkg{parallel} \citep{r:r} and \pkg{snow} \citep{r:sno}.
 
 Cumulative sums of $\log \PL_t$ also allow for model comparison through cumulative log predictive Bayes factors. Letting $\PL_t(A)$ denote the predictive likelihood of model $A$ at time $t$, and $\PL_t(B)$ the corresponding value of model $B$, the cumulative log predictive Bayes factor at time $u$ (and starting point $s$) in favor of model $A$ over model $B$ is straightforwardly given through
 \begin{equation}
@@ -1021,10 +1019,18 @@ A visually barely distinguishable picture emerges when GARCH(1,1) errors are emp
 
 \begin{figure}[!htp]
 \begin{center}
- \includegraphics[width=\textwidth]{predlik1}
+ \includegraphics[width=.984\textwidth]{predlik1}
 \end{center}
 \caption{Top panel: Observed series (green) and symmetrical 98\% one-day-ahead predictive intervals for the model with homoskedastic errors (red) and the model with SV errors (black). The display also contains a close-up, showing only the period from September 2008 until August 2009. This time span is chosen to include the most noticeable ramifications of the financial crisis. During that phase, predictive performance of the model with homoskedastic errors deteriorates substantially, while SV errors can capture the inflated volatility much better. Bottom panel: Log one-day-ahead predictive likelihoods for both models.}
 \label{predlik1}
+\end{figure}
+
+\begin{figure}[!htp]
+\begin{center}
+ \includegraphics[width=.984\textwidth]{predlik3}
+\end{center}
+\caption{Top panel: Observed residuals with respect to the median of the one-day-ahead predictive distribution along with 1\% and 99\% quantiles of the respective predictive distributions. It can clearly be seen that the variances of the predictive distributions in the GARCH and SV models adjust to heteroskedasticity, while the model with homoskedastic errors is much more restrictive. Bottom panel: Cumulative log predictive Bayes factors in favor of the model with SV residuals. Values greater than zero mean that the model with GARCH/SV residuals performs better out of sample up to this point in time.}
+\label{predlik3}
 \end{figure}
 
 The top panel of Figure~\ref{predlik3} visualizes the performance of the three models; it depicts observed regression residuals against their (one-day-ahead) predicted distributions. For the purpose of this image, observed regression residuals are simply defined as the deviation of the data from the median of the predicted distribution. It stands out that predictive quantiles arising from the models with heteroskedastic errors exhibit much more flexibility to adapt to the ``current state of the world'', while the simpler homoskedastic model barely exhibits this feature.
@@ -1034,24 +1040,11 @@ Generally speaking, there is little difference in predicted residuals until the 
 In the bottom panel of Figure~\ref{predlik3}, the cumulative sums of the log predictive Bayes factors are displayed. The last points plotted equal to $176.52$ in the SV case and $166.37$ in the GARCH case; this provides overwhelming overall evidence in favor of a model catering for heteroskedasticity and ``decisive'' \citep{jef:the3ed} respectively ``very strong'' \citep{kas-raf:bay} evidence in favor of SV over vanilla GARCH(1,1) with a final cumulative predictive Bayes factor around $25\,000:1$.
 %and thus clearly rejects the assumption of homoskedastic error terms for this dataset. 
 
-\begin{figure}[!htp]
-\begin{center}
- \includegraphics[width=\textwidth]{predlik3}
-\end{center}
-\caption{Top panel: Observed residuals with respect to the median of the one-day-ahead predictive distribution along with 1\% and 99\% quantiles of the respective predictive distributions. It can clearly be seen that the variances of the predictive distributions in the GARCH and SV models adjust to heteroskedasticity, while the model with homoskedastic errors is much more restrictive. Bottom panel: Cumulative log predictive Bayes factors in favor of the model with SV residuals. Values greater than zero mean that the model with GARCH/SV residuals performs better out of sample up to this point in time.}
-\label{predlik3}
-\end{figure}
 
-It is worth noting that for other exchange rates contained in \code{exrates}, a qualitatively similar picture emerges. For an overview of cumulative log predictive likelihoods, see Table~\ref{exrates}. Detailed results about these currencies are available from the author.
-
-As pointed out above, the analysis of log returns can be viewed upon as a special case of the analysis of log levels where $\beta_1 \equiv 1$ is fixed a priori. When doing so, evidence in favor of heteroskedasticity is again striking. Once more, the model with SV scores highest; its demeaned predictive quantiles are almost indistinguishable from the ``varying $\beta_1$ case''. Predictive quantiles of the model with GARCH residuals again resemble those of the model with SV residuals very closely.
-%Also, predictive performance is similar; the cumulative log predictive Bayes factors amount to $177.36$ for SV vs.\ homoskedastic and $166.64$ for GARCH vs.\ homoskedastic at $t=n$.
-The sum of log predictive likelihoods for $t \in \{1001,1002,\dots,n\}$ is given in the last line of Table~\ref{exrates}. The values are slightly but consistently lower than for the models where $\beta_1$ is estimated from the data. The display of predictive intervals for the log returns is practically identical to Figure~\ref{predlik3} and thus omitted here.
-%Figure~\ref{predlik3a} displays the predictive intervals for the log returns and the comparison through predictive likelihoods and predictive Bayes factors. It is practically identical to Figure~\ref{predlik3}.
-
-Concluding this somewhat anecdotal prediction exercise, we would like to note that for a thorough and more universal statement concerning the real-world applicability and predictive accuracy of \pkg{stochvol}, further studies with different datasets and a richer variety of competing models, potentially including realized volatility measures, are called for. Such a voluminous undertaking is, however, beyond the scope of this paper.
+It is worth noting that for other exchange rates contained in \code{exrates}, a qualitatively similar picture emerges. For an overview of cumulative log predictive likelihoods, see Table~\ref{exrates}.
 
 \begin{table}[!ht]
+ \begin{small}
  \centering
  \begin{tabular}{lccc}
   \hline
@@ -1087,10 +1080,19 @@ Concluding this somewhat anecdotal prediction exercise, we would like to note th
   \hline
   \hline
  \end{tabular}
- \caption{Final cumulative predictive log likelihoods for AR(1) models with different error assumptions for the logarithm of several EUR exchange rates included in \pkg{stochvol}'s dataset \code{exrates}. SV is strongly favored in all cases.}
+ \caption{Final cumulative predictive log likelihoods for AR(1) models with different error assumptions, applied to the logarithm of several EUR exchange rates.% included in \pkg{stochvol}'s dataset \code{exrates}.
+ SV is strongly favored in all cases.}
  \label{exrates}
+ \end{small}
 \end{table}
 
+
+As pointed out above, the analysis of log returns can be viewed upon as a special case of the analysis of log levels where $\beta_1 \equiv 1$ is fixed a priori. When doing so, evidence in favor of heteroskedasticity is again striking. Once more, the model with SV scores highest; its demeaned predictive quantiles are almost indistinguishable from the ``varying $\beta_1$ case''. Predictive quantiles of the model with GARCH residuals again resemble those of the model with SV residuals very closely.
+%Also, predictive performance is similar; the cumulative log predictive Bayes factors amount to $177.36$ for SV vs.\ homoskedastic and $166.64$ for GARCH vs.\ homoskedastic at $t=n$.
+The sum of log predictive likelihoods for $t \in \{1001,1002,\dots,n\}$ is given in the last line of Table~\ref{exrates}. The values are slightly but consistently lower than for the models where $\beta_1$ is estimated from the data. The display of predictive intervals for the log returns is practically identical to Figure~\ref{predlik3} and thus omitted here.
+%Figure~\ref{predlik3a} displays the predictive intervals for the log returns and the comparison through predictive likelihoods and predictive Bayes factors. It is practically identical to Figure~\ref{predlik3}.
+
+Concluding this somewhat anecdotal prediction exercise, we would like to note that for a thorough and more universal statement concerning the real-world applicability and predictive accuracy of \pkg{stochvol}, further studies with different datasets and a richer variety of competing models, potentially including realized volatility measures, are called for. Such a voluminous undertaking is, however, beyond the scope of this paper.
 
 \section{Conclusion}
 The aim of this article was to introduce the reader to the functionality of \pkg{stochvol}. This \proglang{R} package provides a fully Bayesian simulation-based approach for statistical inference in stochastic volatility models. The typical application workflow of \pkg{stochvol} was illustrated through the analysis of exchange rate data contained in the package's \code{exrates} dataset. Furthermore, it was shown how the package can be used as a ``plug-in'' tool for other MCMC samplers. This was illustrated by estimating a Bayesian linear model with SV errors.

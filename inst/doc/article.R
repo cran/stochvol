@@ -24,9 +24,10 @@ set.seed(123)
 library("stochvol")
 data("exrates")
 ret <- logret(exrates$USD, demean = TRUE)
-par(mfrow = c(2, 1), mar = c(1.9, 1.9, 1.9, .5), mgp = c(2, .6, 0))
-plot(exrates$date, exrates$USD, type = 'l', main = "Price of 1 EUR in USD")
-plot(exrates$date[-1], ret, type = 'l', main = "Demeaned log returns")
+par(mfrow = c(2, 1), mar = c(1.9, 1.9, 1.9, 0.5), mgp = c(2, 0.6, 0))
+plot(exrates$date, exrates$USD, type = "l",
+  main = "Price of 1 EUR in USD")
+plot(exrates$date[-1], ret, type = "l", main = "Demeaned log returns")
 
 
 ###################################################
@@ -38,25 +39,25 @@ plot(sim)
 
 
 ###################################################
-### code chunk number 5: article.Rnw:227-229 (eval = FALSE)
+### code chunk number 5: article.Rnw:233-235 (eval = FALSE)
 ###################################################
 ## res <- svsample(ret, priormu = c(-10, 1), priorphi = c(20, 1.1),
-##                 priorsigma = .1)
+##   priorsigma = 0.1)
 
 
 ###################################################
-### code chunk number 6: article.Rnw:232-238
+### code chunk number 6: article.Rnw:238-244
 ###################################################
 if (usePreCalcResultsExtra) {
- load('vignette_sampling_draws1.RData')
+ load("vignette_sampling_draws1.RData")
 } else {
  res <- svsample(ret, priormu = c(-10, 1), priorphi = c(20, 1.1), priorsigma = .1)
- #save(res, file = 'vignette_sampling_draws1.RData')
+ #save(res, file = "vignette_sampling_draws1.RData")
 }
 
 
 ###################################################
-### code chunk number 7: article.Rnw:260-261
+### code chunk number 7: article.Rnw:266-267
 ###################################################
 summary(res, showlatent = FALSE)
 
@@ -70,7 +71,7 @@ volplot(res, forecast = 100, dates = exrates$date[-1])
 ###################################################
 ### code chunk number 9: usd4
 ###################################################
-res <- updatesummary(res, quantiles = c(.01, .1, .5, .9, .99))
+res <- updatesummary(res, quantiles = c(0.01, 0.1, 0.5, 0.9, 0.99))
 volplot(res, forecast = 100, dates = exrates$date[-1])
 
 
@@ -102,18 +103,18 @@ plot(myresid, ret)
 
 
 ###################################################
-### code chunk number 14: article.Rnw:392-398
+### code chunk number 14: article.Rnw:398-404
 ###################################################
 set.seed(123456)
 n <- 1000
-beta.true <- c(.1, .5)
+beta.true <- c(0.1, 0.5)
 sigma.true <- 0.01
 X <- matrix(c(rep(1, n), rnorm(n, sd = sigma.true)), nrow = n)
 y <- rnorm(n, X %*% beta.true, sigma.true)
 
 
 ###################################################
-### code chunk number 15: article.Rnw:402-408
+### code chunk number 15: article.Rnw:408-414
 ###################################################
 burnin <- 100
 draws <- 5000
@@ -124,7 +125,7 @@ C0 <- 0.001
 
 
 ###################################################
-### code chunk number 16: article.Rnw:411-415
+### code chunk number 16: article.Rnw:417-421
 ###################################################
 p <- ncol(X)
 preCov <- solve(crossprod(X) + B0inv)
@@ -133,60 +134,47 @@ preDf <- c0 + n/2 + p/2
 
 
 ###################################################
-### code chunk number 17: article.Rnw:418-421
+### code chunk number 17: article.Rnw:424-427
 ###################################################
 draws1 <- matrix(NA_real_, nrow = draws, ncol = p + 1)
-colnames(draws1) <- c(paste("beta", 0:(p-1), sep='_'), "sigma")
+colnames(draws1) <- c(paste("beta", 0:(p-1), sep = "_"), "sigma")
 sigma2draw <- 1
 
 
 ###################################################
-### code chunk number 18: article.Rnw:424-433 (eval = FALSE)
-###################################################
-## for (i in -(burnin-1):draws) {
-##  betadraw <- as.numeric(mvtnorm::rmvnorm(1, preMean,
-## 					 sigma2draw * preCov))
-##  tmp <- C0 + .5 * (crossprod(y - X %*% betadraw) +
-##  		  crossprod((betadraw - b0), B0inv) %*%
-## 		   (betadraw - b0))
-##  sigma2draw <- 1 / rgamma(1, preDf, rate = tmp)
-##  if (i > 0) draws1[i,] <- c(betadraw, sqrt(sigma2draw))
-## }
-
-
-###################################################
-### code chunk number 19: article.Rnw:435-442
+### code chunk number 18: article.Rnw:430-438
 ###################################################
 for (i in -(burnin-1):draws) {
- betadraw <- as.numeric(mvtnorm::rmvnorm(1, preMean, sigma2draw*preCov))
- tmp <- C0 + .5*(crossprod(y - X%*%betadraw) +
- 		 crossprod((betadraw - b0), B0inv) %*% (betadraw - b0))
- sigma2draw <- 1/rgamma(1, preDf, rate = tmp)
- if (i > 0) draws1[i,] <- c(betadraw, sqrt(sigma2draw))
+  betadraw <- as.numeric(mvtnorm::rmvnorm(1, preMean,
+    sigma2draw * preCov))
+  tmp <- C0 + 0.5 * (crossprod(y - X %*% betadraw) +
+    crossprod((betadraw - b0), B0inv) %*% (betadraw - b0))
+  sigma2draw <- 1 / rgamma(1, preDf, rate = tmp)
+  if (i > 0) draws1[i, ] <- c(betadraw, sqrt(sigma2draw))
 }
 
 
 ###################################################
-### code chunk number 20: article.Rnw:445-446
+### code chunk number 19: article.Rnw:441-442
 ###################################################
 colMeans(draws1)
 
 
 ###################################################
-### code chunk number 21: homo
+### code chunk number 20: homo
 ###################################################
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
 plot(coda::mcmc(draws1))
 
 
 ###################################################
-### code chunk number 22: article.Rnw:454-455 (eval = FALSE)
+### code chunk number 21: article.Rnw:452-453 (eval = FALSE)
 ###################################################
 ## plot(coda::mcmc(draws1))
 
 
 ###################################################
-### code chunk number 23: article.Rnw:477-482
+### code chunk number 22: article.Rnw:475-480
 ###################################################
 mu.true <- log(sigma.true^2)
 phi.true <- 0.97
@@ -196,7 +184,7 @@ y <- X %*% beta.true + simresid$y
 
 
 ###################################################
-### code chunk number 24: article.Rnw:485-491
+### code chunk number 23: article.Rnw:483-489
 ###################################################
 draws <- 50000
 burnin <- 1000
@@ -207,45 +195,44 @@ priorsigma <- 1
 
 
 ###################################################
-### code chunk number 25: article.Rnw:494-502
+### code chunk number 24: article.Rnw:492-499
 ###################################################
 draws2 <- matrix(NA_real_, nrow = floor(draws / thinning),
-		 ncol = 3 + n + p)
+  ncol = 3 + n + p)
 colnames(draws2) <- c("mu", "phi", "sigma",
-		      paste("beta", 0:(p-1), sep = '_'),
-                      paste("h", 1:n, sep='_'))
+  paste("beta", 0:(p-1), sep = "_"), paste("h", 1:n, sep = "_"))
 betadraw <- c(0, 0)
-svdraw <- list(para = c(mu = -10, phi = .9, sigma = .2),
-	       latent = rep(-10, n))
+svdraw <- list(para = c(mu = -10, phi = 0.9, sigma = 0.2),
+  latent = rep(-10, n))
 
 
 ###################################################
-### code chunk number 26: article.Rnw:509-526 (eval = FALSE)
+### code chunk number 25: article.Rnw:506-523 (eval = FALSE)
 ###################################################
 ## for (i in -(burnin-1):draws) {
-##  ytilde <- y - X %*% betadraw
-##  svdraw <- svsample2(ytilde, startpara = para(svdraw),
-##                      startlatent = latent(svdraw), priormu = priormu,
-##                      priorphi = priorphi, priorsigma = priorsigma)
-##  normalizer <- as.numeric(exp(-latent(svdraw)/2))
-##  Xnew <- X * normalizer
-##  ynew <- y * normalizer
-##  Sigma <- solve(crossprod(Xnew) + B0inv)
-##  mu <- Sigma %*% (crossprod(Xnew, ynew) + B0inv %*% b0)
-##  betadraw <- as.numeric(mvtnorm::rmvnorm(1, mu, Sigma))
-##  if (i > 0 & i %% thinning == 0) { 
-##   draws2[i/thinning, 1:3] <- para(svdraw)
-##   draws2[i/thinning, 4:5] <- betadraw
-##   draws2[i/thinning, 6:(n+5)] <- latent(svdraw)
-##  }
+##   ytilde <- y - X %*% betadraw
+##   svdraw <- svsample2(ytilde, startpara = para(svdraw),
+##     startlatent = latent(svdraw), priormu = priormu,
+##     priorphi = priorphi, priorsigma = priorsigma)
+##   normalizer <- as.numeric(exp(-latent(svdraw) / 2))
+##   Xnew <- X * normalizer
+##   ynew <- y * normalizer
+##   Sigma <- solve(crossprod(Xnew) + B0inv)
+##   mu <- Sigma %*% (crossprod(Xnew, ynew) + B0inv %*% b0)
+##   betadraw <- as.numeric(mvtnorm::rmvnorm(1, mu, Sigma))
+##   if (i > 0 & i %% thinning == 0) { 
+##     draws2[i/thinning, 1:3] <- para(svdraw)
+##     draws2[i/thinning, 4:5] <- betadraw
+##     draws2[i/thinning, 6:(n+5)] <- latent(svdraw)
+##   }
 ## }
 
 
 ###################################################
-### code chunk number 27: article.Rnw:529-558
+### code chunk number 26: article.Rnw:526-555
 ###################################################
 if (usePreCalcResults) {
- load('vignette_sampling_draws2.RData')
+ load("vignette_sampling_draws2.RData")
 } else {
 for (i in -(burnin-1):draws) {
 
@@ -276,32 +263,32 @@ for (i in -(burnin-1):draws) {
 
 
 ###################################################
-### code chunk number 28: article.Rnw:561-562 (eval = FALSE)
+### code chunk number 27: article.Rnw:559-560 (eval = FALSE)
 ###################################################
-## colMeans(draws2[,4:8])
+## plot(coda::mcmc(draws2[, 4:7]))
 
 
 ###################################################
-### code chunk number 29: article.Rnw:565-566
+### code chunk number 28: hetero
+###################################################
+par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
+plot(coda::mcmc(draws2selection[, 1:4]))
+
+
+###################################################
+### code chunk number 29: article.Rnw:578-579 (eval = FALSE)
+###################################################
+## colMeans(draws2[, 4:8])
+
+
+###################################################
+### code chunk number 30: article.Rnw:582-583
 ###################################################
 colMeans(draws2selection)
 
 
 ###################################################
-### code chunk number 30: article.Rnw:569-570 (eval = FALSE)
-###################################################
-## plot(coda::mcmc(draws2[,4:7]))
-
-
-###################################################
-### code chunk number 31: hetero
-###################################################
-par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
-plot(coda::mcmc(draws2selection[,1:4]))
-
-
-###################################################
-### code chunk number 32: scatter
+### code chunk number 31: scatter
 ###################################################
 x <- log(exrates$USD[-length(exrates$USD)])
 y <- log(exrates$USD[-1])
@@ -314,10 +301,10 @@ abline(0,1)
 
 
 ###################################################
-### code chunk number 33: article.Rnw:650-871
+### code chunk number 32: article.Rnw:648-869
 ###################################################
 if (usePreCalcResults) {
- load('vignette_sampling_realworld.RData')
+ load("vignette_sampling_realworld.RData")
 } else {
 set.seed(34567890)
 
@@ -346,12 +333,12 @@ C0 <- 0.001
 B0inv <- solve(B0)
 
 ## initialize some space to hold results:
-realres <- vector('list', 3)
+realres <- vector("list", 3)
 
 ## AR(1)-SV:
 realres[[1]] <- matrix(NA_real_, nrow = floor(draws/thinning), ncol = 3 + n + p)
-colnames(realres[[1]]) <- c("mu", "phi", "sigma", paste("beta", 0:(p-1), sep='_'),
-			   paste("h", 1:n, sep='_'))
+colnames(realres[[1]]) <- c("mu", "phi", "sigma", paste("beta", 0:(p-1), sep="_"),
+			   paste("h", 1:n, sep="_"))
 
 ## some indicators:
 paras <- 1:3
@@ -398,7 +385,7 @@ preDf <- c0 + n/2 + p/2
 
 ## allocate space:
 realres[[2]] <- matrix(as.numeric(NA), nrow=floor(draws/thinning), ncol=p+1)
-colnames(realres[[2]]) <- c(paste("beta", 0:(p-1), sep='_'), "sigma")
+colnames(realres[[2]]) <- c(paste("beta", 0:(p-1), sep="_"), "sigma")
 
 ## starting values:
 betadraw <- rep(0, p)
@@ -427,8 +414,8 @@ for (i in -(burnin-1):draws) {
 ## AR(1)-GARCH(1,1):
 ## allocate space:
 realres[[3]] <- matrix(NA_real_, nrow = floor(draws/thinning), ncol = 3 + n + p)
-colnames(realres[[3]]) <- c("a_0", "a_1", "b_1", paste("beta", 0:(p-1), sep='_'),
-			   paste("sigma", 1:n, sep='_'))
+colnames(realres[[3]]) <- c("a_0", "a_1", "b_1", paste("beta", 0:(p-1), sep="_"),
+			   paste("sigma", 1:n, sep="_"))
 
 ## some auxiliary functions:
 loglik <- function(y, s2) {
@@ -531,7 +518,7 @@ standresidmeans <- rowMeans((y - predmeans)/exp(t(realres[[1]][,6:ncol(realres[[
 predmeans3 <- tcrossprod(X, realres[[3]][,4:5])
 standresidmeans3 <- rowMeans((y - predmeans3)/t(realres[[3]][,6:ncol(realres[[3]])]))
 
-realresselection <- vector('list', 3)
+realresselection <- vector("list", 3)
 realresselection[[1]] <- realres[[1]][,c('beta_0', 'beta_1')]
 realresselection[[2]] <- realres[[2]][,c('beta_0', 'beta_1')]
 realresselection[[3]] <- realres[[3]][,c('beta_0', 'beta_1')]
@@ -540,7 +527,7 @@ realresselection[[3]] <- realres[[3]][,c('beta_0', 'beta_1')]
 
 
 ###################################################
-### code chunk number 34: betapost
+### code chunk number 33: betapost
 ###################################################
 smootherfactor <- 1.8
 par(mar = c(2.9, 2.9, 2.7, .5), mgp = c(1.8,.6,0), tcl = -.4)
@@ -583,7 +570,7 @@ legend("topright", c("SV", "GARCH", "homosked."), col=c(1,4,2), pch=1:3)
 
 
 ###################################################
-### code chunk number 35: qqplot
+### code chunk number 34: qqplot
 ###################################################
 par(mfrow=c(3,2), mar = c(3.1, 3.3, 2.0, .5), mgp = c(1.7,.5,0),
     tcl = -.4)

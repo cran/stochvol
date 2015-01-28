@@ -239,7 +239,7 @@ plot.svdraws <- function(x, forecast = NULL, dates = NULL, show0 = FALSE,
  invisible(x)
 }
 
-predict.svdraws <- function(object, steps = 1, ...) {
+predict.svdraws <- function(object, steps = 1L, ...) {
  if (!is(object, "svdraws")) stop("Argument 'object' must be of class 'svdraws'.")
  steps <- as.integer(steps)
  if (steps < 1) stop("Argument 'steps' must be greater or equal to 1.")

@@ -26,7 +26,7 @@ svsim(len, mu = -10, phi = 0.98, sigma = 0.2)
 }
 
 \details{
- This function draws an initial log-volatily \code{h_0} from the stationary distribution of the AR(1) process and iteratively generates \code{h_1,...,h_n}. Finally, the ``log-returns'' \code{y ~ N(0, exp(h/2))} are simulated.
+ This function draws an initial log-volatility \code{h_0} from the stationary distribution of the AR(1) process and iteratively generates \code{h_1,...,h_n}. Finally, the ``log-returns'' are simulated from a normal distribution with mean 0 and standard deviation \code{exp(h/2)}.
 }
 
 \value{
@@ -36,7 +36,7 @@ The output is a list object of class \code{svsim} containing
 \item{vol0}{the initial volatility \code{exp(h_0/2)}, drawn from the stationary distribution of the latent AR(1) process.}
 \item{para}{a named list with three elements \code{mu}, \code{phi}, and \code{sigma}, containing the corresponding arguments.}
 
-To display the output use \code{print}, \code{summary} and \code{plot}. The \code{print} method simply prints the content of the object in a moderately formatted manner. The \code{summary} method provides some summary statistics (in \%), and the \code{plot} method plots the the simulated 'log-returns' \code{y} along with the corresponding volatilites \code{vol}.
+To display the output use \code{print}, \code{summary} and \code{plot}. The \code{print} method simply prints the content of the object in a moderately formatted manner. The \code{summary} method provides some summary statistics (in \%), and the \code{plot} method plots the the simulated 'log-returns' \code{y} along with the corresponding volatilities \code{vol}.
 }
 \author{Gregor Kastner \email{gregor.kastner@wu.ac.at}
 }

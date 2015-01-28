@@ -7,7 +7,7 @@
 Efficient Bayesian Inference for Stochastic Volatility (SV) Models
 }
 \description{
-This package provides an efficient algorithm for fully Bayesian estimation of stochastic volatility (SV) models via Markov chain Monte Carlo (MCMC) methods. Details can be found in Kastner and Frühwirth-Schnatter (2013).
+This package provides an efficient algorithm for fully Bayesian estimation of stochastic volatility (SV) models via Markov chain Monte Carlo (MCMC) methods. Details can be found in Kastner and Frühwirth-Schnatter (2014).
 }
 \details{
 Bayesian inference for stochastic volatility models using MCMC methods highly depends on actual parameter values in terms of sampling efficiency. While draws from the posterior utilizing the standard centered parameterization break down when the volatility of volatility parameter in the latent state equation is small, non-centered versions of the model show deficiencies for highly persistent latent variable series. The novel approach of ancillarity-sufficiency interweaving (Yu and Meng, 2011) has recently been shown to aid in overcoming these issues for a broad class of multilevel models. This package provides software for ``combining best of different worlds'' which allows for inference for parameter constellations that have previously been infeasible to estimate without the need to select a particular parameterization beforehand.

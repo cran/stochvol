@@ -28,13 +28,13 @@ svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5),
    numeric vector of length 2, indicating mean and standard deviation for the Gaussian prior distribution of the parameter \code{mu}, the level of the log-volatility. The default value is \code{c(0, 100)}, which constitutes a practically uninformative prior for common exchange rate datasets, stock returns and the like.
 }
   \item{priorphi}{
-   numeric vector of length 2, indicating the shape parameters for the Beta prior distributoin of the transformed parameter \code{(phi+1)/2}, where \code{phi} denotes the persistence of the log-volatility. The default value is \code{c(5, 1.5)}, which constitutes a prior that puts some belief in a persistent log-volatility but also encompasses the region where \code{phi} is around 0.
+   numeric vector of length 2, indicating the shape parameters for the Beta prior distribution of the transformed parameter \code{(phi+1)/2}, where \code{phi} denotes the persistence of the log-volatility. The default value is \code{c(5, 1.5)}, which constitutes a prior that puts some belief in a persistent log-volatility but also encompasses the region where \code{phi} is around 0.
 }
   \item{priorsigma}{
    single positive real number, which stands for the scaling of the transformed parameter \code{sigma^2}, where \code{sigma} denotes the volatility of log-volatility. More precisely, \code{sigma^2 ~ priorsigma * chisq(df = 1)}. The default value is \code{1}, which constitutes a reasonably vague prior for many common exchange rate datasets, stock returns and the like.
 }
   \item{thinpara}{
-   :single number greater or equal to 1, coercible to integer. Every \code{thinpara}th parameter draw is kept and returned. The default value is 1, corresponding to no thinning of the parameter draws -- every draw is stored.
+   single number greater or equal to 1, coercible to integer. Every \code{thinpara}th parameter draw is kept and returned. The default value is 1, corresponding to no thinning of the parameter draws -- every draw is stored.
 }
   \item{thinlatent}{
    single number greater or equal to 1, coercible to integer. Every \code{thinlatent}th latent variable draw is kept and returned. The default value is 1, corresponding to no thinning of the latent variable draws, i.e. every draw is kept.
@@ -56,7 +56,7 @@ svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5),
 \value{
 A list with three components:
 \item{para}{\code{3} times \code{draws} matrix containing the parameter draws.}
-\item{latent}{\code{length(y)} times \code{draws} matrix containing draws of the latent variables \code{h_1, \dots, h_n}}.
+\item{latent}{\code{length(y)} times \code{draws} matrix containing draws of the latent variables \code{h_1, \dots, h_n}.}
 \item{latent0}{Vector of length \code{draws} containing the draw(s) of the initial latent variable \code{h_0}.}
 }
 \author{
