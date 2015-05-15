@@ -7,7 +7,7 @@
 }
 
 \usage{
-svsim(len, mu = -10, phi = 0.98, sigma = 0.2)
+svsim(len, mu = -10, phi = 0.98, sigma = 0.2, nu = Inf)
 }
 
 \arguments{
@@ -15,13 +15,16 @@ svsim(len, mu = -10, phi = 0.98, sigma = 0.2)
    length of the simulated time series.
   }
   \item{mu}{
-   level of the latent log-volatility AR(1) process. The defaults value is -10.
+   level of the latent log-volatility AR(1) process. The defaults value is \code{-10}.
   }
   \item{phi}{
-   persistence of the latent log-volatility AR(1) process. The default value is 0.98.
+   persistence of the latent log-volatility AR(1) process. The default value is \code{0.98}.
   }
   \item{sigma}{
-   volatility of the latent log-volatility AR(1) process. The defaults value is 0.2.
+   volatility of the latent log-volatility AR(1) process. The default value is \code{0.2}.
+  }
+  \item{nu}{
+   degrees-of-freedom for the conditional innovations distribution. The default value is \code{Inf}, corresponding to standard normal conditional innovations.
   }
 }
 
@@ -34,7 +37,7 @@ The output is a list object of class \code{svsim} containing
 \item{y}{a vector of length \code{len} containing the simulated data, usually interpreted as ``log-returns''.}
 \item{vol}{a vector of length \code{len} containing the simulated instantaneous volatilities \code{exp(h_t/2)}.}
 \item{vol0}{the initial volatility \code{exp(h_0/2)}, drawn from the stationary distribution of the latent AR(1) process.}
-\item{para}{a named list with three elements \code{mu}, \code{phi}, and \code{sigma}, containing the corresponding arguments.}
+\item{para}{a named list with three elements \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu}), containing the corresponding arguments.}
 
 To display the output use \code{print}, \code{summary} and \code{plot}. The \code{print} method simply prints the content of the object in a moderately formatted manner. The \code{summary} method provides some summary statistics (in \%), and the \code{plot} method plots the the simulated 'log-returns' \code{y} along with the corresponding volatilities \code{vol}.
 }

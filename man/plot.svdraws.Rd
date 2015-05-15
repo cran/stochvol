@@ -10,7 +10,7 @@ Graphical Summary of the Posterior Distribution
 \usage{
 \method{plot}{svdraws}(x, forecast = NULL, dates = NULL, show0 = FALSE, showobs = TRUE,
      showprior = TRUE, col = NULL, forecastlty = NULL, tcl = -0.4,
-     mar = c(1.9, 1.9, 1.7, 0.5), mgp = c(2, 0.6, 0), ...)
+     mar = c(1.9, 1.9, 1.7, 0.5), mgp = c(2, 0.6, 0), simobj = NULL, ...)
 }
 
 \arguments{
@@ -41,6 +41,8 @@ Graphical Summary of the Posterior Distribution
   \item{mar}{numerical vector of length 4, indicating the plot margins. See \code{\link[graphics]{par}} for details. The default value is \code{c(1.9, 1.9, 1.9, 0.5)}, which is slightly smaller than the R-defaults.
 }
   \item{mgp}{numerical vector of length 3, indicating the axis and label positions. See \code{\link[graphics]{par}} for details. The default value is \code{c(2, 0.6, 0)}, which is slightly smaller than the R-defaults.
+}
+  \item{simobj}{object of class \code{svsim} as returned by the SV simulation function \code{\link{svsim}}. If provided, the ``true'' data generating values will be added to the plots.
 }
   \item{\dots}{
   further arguments are passed on to the invoked plotting functions.

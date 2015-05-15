@@ -4,11 +4,12 @@
 Probability Density Function Plot for the Parameter Posteriors
 }
 \description{
-Displays a plot of the density estimate for the posterior distribution of the parameters \code{mu}, \code{phi} and \code{sigma}, computed by the \code{\link[stats]{density}} function.
+Displays a plot of the density estimate for the posterior distribution of the parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu}), computed by the \code{\link[stats]{density}} function.
 }
 \usage{
 paradensplot(x, showobs = TRUE, showprior = TRUE, showxlab = TRUE,
-	     mar = c(1.9, 1.9, 1.9, 0.5), mgp = c(2, 0.6, 0), ...)
+	     mar = c(1.9, 1.9, 1.9, 0.5), mgp = c(2, 0.6, 0),
+	     simobj = NULL, ...)
 }
 \arguments{
   \item{x}{
@@ -28,6 +29,8 @@ paradensplot(x, showobs = TRUE, showprior = TRUE, showxlab = TRUE,
 }
   \item{mgp}{
    numerical vector of length 3, indicating the axis and label positions. See \code{\link[graphics]{par}} for details. The default value is \code{c(2, 0.6, 0)}, which is slightly smaller than the R-defaults.
+}
+  \item{simobj}{object of class \code{svsim} as returned by the SV simulation function \code{\link{svsim}}. If provided, ``true'' data generating values will be added to the plots.
 }
   \item{\dots}{
    further arguments are passed on to the invoked \code{plot} function.

@@ -8,7 +8,16 @@ usePreCalcResultsExtra <- FALSE
 @
 
 %\VignetteIndexEntry{Dealing with Stochastic Volatility in Time Series Using the R Package stochvol}
-%\VignetteKeyword{Bayesian inference, Markov chain Monte Carlo (MCMC), auxiliary mixture sampling, ancillarity-sufficiency interweaving strategy (ASIS), state-space model, heteroskedasticity, financial time series}
+
+%\VignetteKeyword{Bayesian inference}
+%\VignetteKeyword{Markov chain Monte Carlo (MCMC)}
+%\VignetteKeyword{heteroskedasticity}
+%\VignetteKeyword{SV}
+%\VignetteKeyword{GARCH}
+%\VignetteKeyword{forecasting}
+%\VignetteKeyword{predictive density}
+%\VignetteKeyword{predictive Bayes factor}
+%\VignetteKeyword{exchange rates}
 
 \documentclass[article, nojss]{jss}
 %\documentclass[article]{jss}
@@ -32,7 +41,6 @@ usePreCalcResultsExtra <- FALSE
 %% almost as usual
 \author{Gregor Kastner\\WU Vienna University of Economics and Business}
 \title{Dealing with Stochastic Volatility in Time Series Using the \proglang{R} Package \pkg{stochvol}}
-%\Shorttitle{The \proglang{R} package \pkg{stochvol} (DRAFT VERSION)} %% a short title (if necessary)
 \Plaintitle{Dealing with Stochastic Volatility in Time Series Using the R Package stochvol} %% without formatting
 
 %% for pretty printing and a nice hypersummary also set:
@@ -43,8 +51,7 @@ usePreCalcResultsExtra <- FALSE
 The \proglang{R} package \pkg{stochvol} provides a fully Bayesian implementation of heteroskedasticity modeling within the framework of stochastic volatility.
 It utilizes Markov chain Monte Carlo (MCMC) samplers to conduct inference by obtaining draws from the posterior distribution of parameters and latent variables which can then be used for predicting future volatilities. The package can straightforwardly be employed as a stand-alone tool; moreover, it allows for easy incorporation into other MCMC samplers. The main focus of this paper is to show the functionality of \pkg{stochvol}. In addition, it provides a brief mathematical description of the model, an overview of the sampling schemes used, and several illustrative examples using exchange rate data.
 }
-\Keywords{Bayesian inference, Markov chain Monte Carlo (MCMC), auxiliary mixture sampling, ancillarity-sufficiency interweaving strategy (ASIS), state-space model, heteroskedasticity, financial time series}
-%\Plainkeywords{Bayesian inference, Markov chain Monte Carlo (MCMC), auxiliary mixture sampling, ancillarity-sufficiency interweaving strategy (ASIS), state-space model, heteroskedasticity, financial time series}
+\Keywords{Bayesian inference, Markov chain Monte Carlo (MCMC), heteroskedasticity, SV, GARCH, forecasting, predictive density, predictive Bayes factor, exchange rates}
 %% at least one keyword must be supplied
 
 %% publication information
@@ -92,7 +99,7 @@ options(prompt = 'R> ', continue = '+  ')
 @
 
 \section*{Preface}
-This vignette corresponds to a forthcoming article of the same name in the Journal of Statistical Software. At the time of this writing, the vignette and the published article coincide; nevertheless, this version might receive minor updates over time. To cite, please use \cite{kas:dea}. Further information about citing \pkg{stochvol} can be obtained in \proglang{R} by installing the package, e.g., through \code{install.packages("stochvol")}, and typing \code{citation("stochvol")}.
+This vignette corresponds to a forthcoming article of the same name in the Journal of Statistical Software. At the time of this writing, the vignette and the published article coincide; nevertheless, this version might receive minor updates as time goes by. To cite, please use \cite{kas:dea}. Further information about citing \pkg{stochvol} can be obtained in \proglang{R} by installing the package, e.g., through \code{install.packages("stochvol")}, and calling \code{citation("stochvol")}.
 
 \section{Introduction}
 Returns -- in particular financial returns -- are commonly analyzed by estimating and predicting potentially time-varying volatilities. This focus has a long history, dating back at least to \cite{mar:por} who investigates portfolio construction with optimal expected return-variance trade-off. In his article, he proposes rolling-window-type estimates for the instantaneous volatilities, but already then recognizes the potential for ``better methods, which take into account more information''.
@@ -1080,7 +1087,7 @@ It is worth noting that for other exchange rates contained in \code{exrates}, a 
   \hline
   \hline
  \end{tabular}
- \caption{Final cumulative predictive log likelihoods for AR(1) models with different error assumptions, applied to the logarithm of several EUR exchange rates.% included in \pkg{stochvol}'s dataset \code{exrates}.
+ \caption{Final cumulative predictive log likelihoods for AR(1) models with different error assumptions, applied to the logarithm of several EUR exchange rates. % included in \pkg{stochvol}'s dataset \code{exrates}.
  SV is strongly favored in all cases.}
  \label{exrates}
  \end{small}

@@ -3,13 +3,17 @@
 #if defined(COMPILING_STOCHVOL)
 
 // just declare, will be defined in sampler.cpp
-// a single MCMC update:
+// a single MCMC update (normal errors):
 void update(const Rcpp::NumericVector &, double *, double *, double &,
             double *, int *, const bool, const double,
 	    const double, const double, const double, const double,
 	    const double, const double, const double, const double,
 	    const bool, const bool, const double, const int, const int,
 	    const bool);
+
+// a single MCMC update (t errors):
+void update_terr(const Rcpp::NumericVector &,
+                 double *, double &, const double, const double);
 
 #else
 

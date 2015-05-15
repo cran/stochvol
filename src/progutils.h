@@ -3,17 +3,21 @@
 
 /* Contains the following code modules:
 
-   a) Some helper functions such as progress bar tools and return value
+   a) some helper functions such as progress bar tools and return value
       prettifier
 
-   b) Some functions related to the Cholesky decomposition used for 
+   b) some functions related to the Cholesky decomposition used for 
       sampling AWOL and efficiently solving the systems of linear
       equations
 
    c) function for inverse transform sampling
+
+   d) a very basic Newton-Raphson algorithm for finding the root
+      of dlogdnu (defined in densities.h)
 */
 
 #include <Rcpp.h>
+#include "densities.h"
 
 // a)
 // Sums up results and prepares return value
@@ -21,7 +25,9 @@ Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
                    const Rcpp::NumericVector & phi,
 		   const Rcpp::NumericVector & sigma,
 		   const Rcpp::NumericMatrix & hstore,
-		   const Rcpp::NumericVector & h0store);
+		   const Rcpp::NumericVector & h0store,
+		   const Rcpp::NumericVector & nustore,
+		   const Rcpp::NumericMatrix & taustore);
 
 // sets up the progress bar
 int progressbar_init(int N);
@@ -37,7 +43,9 @@ void progressbar_finish(int N);
 
 // to store (some) values of h
 inline void store_h(double * h, double * hstore, int timethin,
-                    int hstorelength, double h0, double * h0store,
+                    int hstorelength,
+                    double * tau, double * taustore, 
+		    double h0, double * h0store,
 		    Rcpp::NumericVector curpara,
 		    bool centered_baseline) {
 
@@ -48,7 +56,7 @@ inline void store_h(double * h, double * hstore, int timethin,
   for (int j = 0; j < hstorelength; j++) hstore[j] = curpara[0] + curpara[2]*h[timethin*j];
   *h0store = curpara[0] + curpara[2]*h0;
  }
-
+ //for (int j = 0; j < hstorelength; j++) taustore[j] = tau[timethin*j];
 }
 
 // b)
@@ -65,4 +73,9 @@ void backwardAlg(const Rcpp::NumericVector & chol_diag, const Rcpp::NumericVecto
 // draws length(r) RVs, expects the non-normalized CDF mixprob
 void invTransformSampling(const double * const, int * r, int T);
 
+// d)
+// find the root of a function (Newton-Raphson)
+double newtonRaphson(double startval, double sumtau, int n,
+                     double lower = R_NegInf, double upper = R_PosInf,
+		     double tol = 1e-03, int maxiter = 50);
 #endif

@@ -5,17 +5,17 @@
 Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility (SV) Model
 }
 \description{
-\code{svsample} simulates from the joint posterior distribution of the SV parameters \code{mu}, \code{phi}, and \code{sigma}, along with the latent log-volatilities \code{h_0,...,h_n} and returns the MCMC draws.
+\code{svsample} simulates from the joint posterior distribution of the SV parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu}), along with the latent log-volatilities \code{h_0,...,h_n} and returns the MCMC draws.
 }
 \usage{
 svsample(y, draws = 10000, burnin = 1000, priormu = c(0, 100),
-         priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1,
-         thinlatent = 1, thintime = 1, quiet = FALSE, startpara,
-         startlatent, expert, ...)
+         priorphi = c(5, 1.5), priorsigma = 1, priornu = NA,
+	 thinpara = 1, thinlatent = 1, thintime = 1, quiet = FALSE,
+	 startpara, startlatent, expert, ...)
 }
 \arguments{
   \item{y}{
-   numeric vector containing the data (usually log-returns), which must not contain zeroes. Alternatively, \code{y} can be an \code{svsim} object. In this case, the returns will be extracted and a warning is thrown.
+   numeric vector containing the data (usually log-returns), which must not contain zeros. Alternatively, \code{y} can be an \code{svsim} object. In this case, the returns will be extracted and a warning is thrown.
 }
   \item{draws}{
    single number greater or equal to 1, indicating the number of draws after burn-in (see below). Will be automatically coerced to integer. The defaults value is 10000.
@@ -31,6 +31,9 @@ svsample(y, draws = 10000, burnin = 1000, priormu = c(0, 100),
 }
   \item{priorsigma}{
    single positive real number, which stands for the scaling of the transformed parameter \code{sigma^2}, where \code{sigma} denotes the volatility of log-volatility. More precisely, \code{sigma^2 ~ priorsigma * chisq(df = 1)}. The default value is \code{1}, which constitutes a reasonably vague prior for many common exchange rate datasets, stock returns and the like.
+}
+  \item{priornu}{
+   numeric vector of length 2 (or \code{NA}), indicating the lower and upper bounds for the uniform prior distribution of the parameter \code{nu}, the degrees-of-freedom parameter of the conditional innovations t-distribution. The default value is \code{NA}, fixing the degrees-of-freedom to infinity. This corresponds to conditional standard normal innovations, the pre-1.1.0 behavior of \pkg{stochvol}.
 }
   \item{thinpara}{
    single number greater or equal to 1, coercible to integer. Every \code{thinpara}th parameter draw is kept and returned. The default value is 1, corresponding to no thinning of the parameter draws i.e. every draw is stored.
@@ -72,7 +75,7 @@ svsample(y, draws = 10000, burnin = 1000, priormu = c(0, 100),
 }
 }
 \details{
-For details concerning the algorithm please see the paper by Kastner and Frühwirth-Schnatter (2013).
+For details concerning the algorithm please see the paper by Kastner and Frühwirth-Schnatter (2014).
 }
 \value{
 The value returned is a list object of class \code{svdraws} holding

@@ -4,10 +4,10 @@
 Trace Plot of MCMC Draws from the Parameter Posteriors
 }
 \description{
-Displays a plot of iterations vs. sampled values the parameters \code{mu}, \code{phi} and \code{sigma}, with a separate plot per variable.
+Displays a plot of iterations vs. sampled values the parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu}), with a separate plot per variable.
 }
 \usage{
-paratraceplot(x, mar = c(1.9, 1.9, 1.9, 0.5), mgp = c(2, 0.6, 0), ...)
+paratraceplot(x, mar = c(1.9, 1.9, 1.9, 0.5), mgp = c(2, 0.6, 0), simobj = NULL, ...)
 }
 \arguments{
   \item{x}{
@@ -18,6 +18,8 @@ paratraceplot(x, mar = c(1.9, 1.9, 1.9, 0.5), mgp = c(2, 0.6, 0), ...)
 }
   \item{mgp}{
    numerical vector of length 3, indicating the axis and label positions. See \code{\link[graphics]{par}} for details. The default value is \code{c(2, 0.6, 0)}, which is slightly smaller than the R-defaults.
+}
+  \item{simobj}{object of class \code{svsim} as returned by the SV simulation function \code{\link{svsim}}. If provided, ``true'' data generating values will be added to the plots.
 }
   \item{\dots}{
   further arguments are passed on to the invoked \code{matplot} function.

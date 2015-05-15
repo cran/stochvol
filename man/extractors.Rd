@@ -35,6 +35,4 @@ runtime(x)
 Gregor Kastner \email{gregor.kastner@wu.ac.at}
 }
 
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
 \keyword{utilities}

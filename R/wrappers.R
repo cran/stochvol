@@ -1,6 +1,6 @@
 # R wrapper function for the main MCMC loop
 
-svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1, quiet = FALSE, startpara, startlatent, expert, ...) {
+svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, thinpara = 1, thinlatent = 1, thintime = 1, quiet = FALSE, startpara, startlatent, expert, ...) {
  
  # Some error checking for y
  if (is(y, "svsim")) {
@@ -42,7 +42,15 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  if (!is.numeric(priorsigma) | length(priorsigma) != 1 | priorsigma <= 0) {
   stop("Argument 'priorsigma' (scaling of the chi-squared(df = 1) prior for sigma^2) must be a single number > 0.")
  }
- 
+
+ if (any(is.na(priornu))) {
+  priornu <- NA
+ } else {
+  if (!is.numeric(priornu) || length(priornu) != 2 || priornu[1] >= priornu[2] || priornu[1] < 0) {
+   stop("If not NA, argument 'priornu' (lower and upper bounds for the uniform prior for the df) must be numeric and of length 2. Moreover, 0 <= priornu[1] < priornu[2].")
+  }
+ }
+
  # Some error checking for thinpara
  if (!is.numeric(thinpara) | thinpara < 1) {
   stop("Argument 'thinpara' (thinning parameter for mu, phi, and sigma) must be a single number >= 1.")
@@ -160,10 +168,14 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
 
  # Some input checking for startpara
  if (missing(startpara)) {
-  startpara <- list(mu = -10, phi = .9, sigma = .3) 
+  if (any(is.na(priornu))) {
+   startpara <- list(mu = -10, phi = .9, sigma = .3)
+  } else {
+   startpara <- list(mu = -10, phi = .9, sigma = .3, nu = mean(priornu))
+  }
  } else {
   if (!is.list(startpara))
-   stop("Argument 'startpara' must be a list with three elements named 'mu', 'phi', 'sigma'.")
+   stop("Argument 'startpara' must be a list. Its elements must be named 'mu', 'phi', 'sigma'. Moreover, if !is.na(priornu), an element named 'nu' must exist.")
   
   if (!is.numeric(startpara[["mu"]]))
    stop('Argument \'startpara[["mu"]]\' must exist and be numeric.')
@@ -179,6 +191,12 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
   
   if (startpara[["sigma"]] <= 0)
    stop('Argument \'startpara[["sigma"]]\' must be positive.')
+  
+  if (!is.na(priornu) && !is.numeric(startpara[["nu"]]))
+   stop('Argument \'startpara[["nu"]]\' must exist and be numeric.')
+
+  if (!is.na(priornu) && (startpara[["nu"]] > priornu[2] || startpara[["nu"]] < priornu[1]))
+   stop('Argument \'startpara[["nu"]]\' must be within range(priornu).')
  }
 
  # Some input checking for startlatent
@@ -201,7 +219,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
        	priormu[1], priormu[2]^2, priorphi[1], priorphi[2], priorsigma, 
        	thinlatent, thintime, startpara, startlatent, myquiet, para,
 	mhsteps, B011, B022, mhcontrol, gammaprior, truncnormal,
-	myoffset, FALSE, PACKAGE = "stochvol"))
+	myoffset, FALSE, priornu, PACKAGE = "stochvol"))
 
  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
   
@@ -219,10 +237,18 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  res$para <- mcmc(res$para[seq(burnin+thinpara+1, burnin+draws+1, thinpara),,drop=FALSE], burnin+thinpara, burnin+draws, thinpara)
  res$latent <- mcmc(t(res$latent), burnin+thinlatent, burnin+draws, thinlatent)
  res$latent0 <- mcmc(res$latent0, burnin+thinlatent, burnin+draws, thinlatent)
- attr(res$para, "dimnames") <- list(NULL, c("mu", "phi", "sigma"))
+ 
+ if (ncol(res$para) == 3) {
+  attr(res$para, "dimnames") <- list(NULL, c("mu", "phi", "sigma"))
+  res$priors <- list(mu = priormu, phi = priorphi, sigma = priorsigma)
+ } else {
+  attr(res$para, "dimnames") <- list(NULL, c("mu", "phi", "sigma", "nu"))
+  res$priors <- list(mu = priormu, phi = priorphi, sigma = priorsigma, nu = priornu)
+  #res$tau <- mcmc(t(res$tau), burnin+thinlatent, burnin+draws, thinlatent)
+ }
+ 
  attr(res$latent, "dimnames") <- list(NULL, paste('h_', seq(1, length(y), by=thintime), sep=''))
  res$runtime <- runtime
- res$priors <- list(mu = priormu, phi = priorphi, sigma = priorsigma)
  res$thinning <- list(para = thinpara, latent = thinlatent, time = thintime)
  class(res) <- "svdraws"
  
@@ -238,15 +264,20 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
 
 # This function does not check input nor converts the result to coda objects
 
-svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1, quiet = TRUE, startpara, startlatent) {
+svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, thinpara = 1, thinlatent = 1, thintime = 1, quiet = TRUE, startpara, startlatent) {
 
  res <- .Call("sampler", y, draws, burnin, priormu[1], priormu[2]^2,
-	      priorphi[1], priorphi[2], priorsigma, thinlatent, thintime,
-	      startpara, startlatent, quiet, 3L, 2L, 10^8, 10^12,
-	      -1, TRUE, FALSE, 0, FALSE, PACKAGE = "stochvol")
+	      priorphi[1], priorphi[2], priorsigma, thinlatent,
+	      thintime, startpara, startlatent, quiet, 3L, 2L, 10^8, 10^12,
+	      -1, TRUE, FALSE, 0, FALSE, priornu, PACKAGE = "stochvol")
 
  res$para <- t(res$para[-1,,drop=FALSE])
- rownames(res$para) <- names(res$para) <- c("mu", "phi", "sigma")
+ if (nrow(res$para) == 3) {
+  rownames(res$para) <- names(res$para) <- c("mu", "phi", "sigma")
+ } else {
+  rownames(res$para) <- names(res$para) <- c("mu", "phi", "sigma", "nu")
+ }
+
  res
 }
 

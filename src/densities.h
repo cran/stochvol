@@ -37,9 +37,25 @@ inline double logacceptrateRW(double xnew, double xold, double Bsigma, int T, do
 
 // proportion of two beta-distributions with same parameters
 // (evaluated at two different points)
-
 inline double propBeta(double x, double y, double a, double b) {
  return pow(x/y, a-1)*pow((1-x)/(1-y), b-1);
 }
+
+// full conditional non-normalized posterior log-density of the
+// degrees of freedom parameter nu
+inline double logdnu(double nu, double sumtau, int n) {
+ return .5 * nu * (n*log(.5*nu) - sumtau) - n*lgamma(.5*nu);
+}
+
+// first derivative of logdnu
+inline double dlogdnu(double nu, double sumtau, int n) {
+ return .5 * (n * ( 1 + log(.5*nu) - Rf_digamma(.5*nu)) - sumtau);
+}
+
+// second derivative of logdnu
+inline double ddlogdnu(double nu, int n) {
+ return .25 * n * (2/nu - Rf_trigamma(.5*nu));
+}
+
 
 #endif

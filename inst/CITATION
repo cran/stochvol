@@ -6,7 +6,7 @@ year <- sub("-.*", "", meta$Date)
 note <- sprintf("R package version %s", meta$Version)
 
 citEntry(entry = "article",
-         title = "Dealing with Stochastic Volatility in Time Series Using the R Package stochvol",
+         title = "Dealing with Stochastic Volatility in Time Series Using the {R} Package stochvol",
          author = personList(as.person("Gregor Kastner")),
          journal = "Journal of Statistical Software",
          year = "forthcoming",
@@ -18,7 +18,7 @@ citEntry(entry = "article",
 
 citEntry(header = "To refer to the current version of the package you could use:",
          entry = "manual",
-         title = "{stochvol}: Efficient Bayesian Inference for Stochastic Volatility (SV) Models",
+         title = "{stochvol}: Efficient Bayesian Inference for Stochastic Volatility ({SV}) Models",
          author = personList(as.person("Gregor Kastner")),                              
          year = year,
          note = note,
@@ -42,6 +42,17 @@ citEntry(header = "To refer to the sampling methodology used in stochvol please 
          pages = "408--423",
          url = "http://dx.doi.org/10.1016/j.csda.2013.01.002",
          textVersion = "Gregor Kastner, Sylvia Frühwirth-Schnatter (2014). Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC estimation of stochastic volatility models. Computational Statistics & Data Analysis 76:408-423. URL: http://dx.doi.org/10.1016/j.csda.2013.01.002"
+)
+
+citEntry(header = "If you want to specifically refer to the conditional Student's t sampler, use:",
+         entry = "techreport",
+         title = "Heavy-Tailed Innovations in the {R} Package stochvol",
+         author = personList(as.person("Gregor Kastner")),
+         type = "R Package Vignette",
+         institution = "CRAN",
+         year = "2015",
+         url = "http://cran.r-project.org/web/packages/stochvol/vignettes/heavytails.pdf",
+         textVersion = "Gregor Kastner (2015). Heavy-Tailed Innovations in the R Package stochvol. R Package Vignette. URL: http://cran.r-project.org/web/packages/stochvol/vignettes/heavytails.pdf"
 )
 
 citFooter("BibTeX entries of the above can be obtained by", sQuote('toBibtex(citation("stochvol"))'))

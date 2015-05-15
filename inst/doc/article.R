@@ -1,4 +1,5 @@
 ### R code from vignette source 'article.Rnw'
+### Encoding: UTF-8
 
 ###################################################
 ### code chunk number 1: article.Rnw:1-7
@@ -39,14 +40,14 @@ plot(sim)
 
 
 ###################################################
-### code chunk number 5: article.Rnw:233-235 (eval = FALSE)
+### code chunk number 5: article.Rnw:240-242 (eval = FALSE)
 ###################################################
 ## res <- svsample(ret, priormu = c(-10, 1), priorphi = c(20, 1.1),
 ##   priorsigma = 0.1)
 
 
 ###################################################
-### code chunk number 6: article.Rnw:238-244
+### code chunk number 6: article.Rnw:245-251
 ###################################################
 if (usePreCalcResultsExtra) {
  load("vignette_sampling_draws1.RData")
@@ -57,7 +58,7 @@ if (usePreCalcResultsExtra) {
 
 
 ###################################################
-### code chunk number 7: article.Rnw:266-267
+### code chunk number 7: article.Rnw:273-274
 ###################################################
 summary(res, showlatent = FALSE)
 
@@ -103,7 +104,7 @@ plot(myresid, ret)
 
 
 ###################################################
-### code chunk number 14: article.Rnw:398-404
+### code chunk number 14: article.Rnw:405-411
 ###################################################
 set.seed(123456)
 n <- 1000
@@ -114,7 +115,7 @@ y <- rnorm(n, X %*% beta.true, sigma.true)
 
 
 ###################################################
-### code chunk number 15: article.Rnw:408-414
+### code chunk number 15: article.Rnw:415-421
 ###################################################
 burnin <- 100
 draws <- 5000
@@ -125,7 +126,7 @@ C0 <- 0.001
 
 
 ###################################################
-### code chunk number 16: article.Rnw:417-421
+### code chunk number 16: article.Rnw:424-428
 ###################################################
 p <- ncol(X)
 preCov <- solve(crossprod(X) + B0inv)
@@ -134,7 +135,7 @@ preDf <- c0 + n/2 + p/2
 
 
 ###################################################
-### code chunk number 17: article.Rnw:424-427
+### code chunk number 17: article.Rnw:431-434
 ###################################################
 draws1 <- matrix(NA_real_, nrow = draws, ncol = p + 1)
 colnames(draws1) <- c(paste("beta", 0:(p-1), sep = "_"), "sigma")
@@ -142,7 +143,7 @@ sigma2draw <- 1
 
 
 ###################################################
-### code chunk number 18: article.Rnw:430-438
+### code chunk number 18: article.Rnw:437-445
 ###################################################
 for (i in -(burnin-1):draws) {
   betadraw <- as.numeric(mvtnorm::rmvnorm(1, preMean,
@@ -155,7 +156,7 @@ for (i in -(burnin-1):draws) {
 
 
 ###################################################
-### code chunk number 19: article.Rnw:441-442
+### code chunk number 19: article.Rnw:448-449
 ###################################################
 colMeans(draws1)
 
@@ -168,13 +169,13 @@ plot(coda::mcmc(draws1))
 
 
 ###################################################
-### code chunk number 21: article.Rnw:452-453 (eval = FALSE)
+### code chunk number 21: article.Rnw:459-460 (eval = FALSE)
 ###################################################
 ## plot(coda::mcmc(draws1))
 
 
 ###################################################
-### code chunk number 22: article.Rnw:475-480
+### code chunk number 22: article.Rnw:482-487
 ###################################################
 mu.true <- log(sigma.true^2)
 phi.true <- 0.97
@@ -184,7 +185,7 @@ y <- X %*% beta.true + simresid$y
 
 
 ###################################################
-### code chunk number 23: article.Rnw:483-489
+### code chunk number 23: article.Rnw:490-496
 ###################################################
 draws <- 50000
 burnin <- 1000
@@ -195,7 +196,7 @@ priorsigma <- 1
 
 
 ###################################################
-### code chunk number 24: article.Rnw:492-499
+### code chunk number 24: article.Rnw:499-506
 ###################################################
 draws2 <- matrix(NA_real_, nrow = floor(draws / thinning),
   ncol = 3 + n + p)
@@ -207,7 +208,7 @@ svdraw <- list(para = c(mu = -10, phi = 0.9, sigma = 0.2),
 
 
 ###################################################
-### code chunk number 25: article.Rnw:506-523 (eval = FALSE)
+### code chunk number 25: article.Rnw:513-530 (eval = FALSE)
 ###################################################
 ## for (i in -(burnin-1):draws) {
 ##   ytilde <- y - X %*% betadraw
@@ -229,7 +230,7 @@ svdraw <- list(para = c(mu = -10, phi = 0.9, sigma = 0.2),
 
 
 ###################################################
-### code chunk number 26: article.Rnw:526-555
+### code chunk number 26: article.Rnw:533-562
 ###################################################
 if (usePreCalcResults) {
  load("vignette_sampling_draws2.RData")
@@ -263,7 +264,7 @@ for (i in -(burnin-1):draws) {
 
 
 ###################################################
-### code chunk number 27: article.Rnw:559-560 (eval = FALSE)
+### code chunk number 27: article.Rnw:566-567 (eval = FALSE)
 ###################################################
 ## plot(coda::mcmc(draws2[, 4:7]))
 
@@ -276,13 +277,13 @@ plot(coda::mcmc(draws2selection[, 1:4]))
 
 
 ###################################################
-### code chunk number 29: article.Rnw:578-579 (eval = FALSE)
+### code chunk number 29: article.Rnw:585-586 (eval = FALSE)
 ###################################################
 ## colMeans(draws2[, 4:8])
 
 
 ###################################################
-### code chunk number 30: article.Rnw:582-583
+### code chunk number 30: article.Rnw:589-590
 ###################################################
 colMeans(draws2selection)
 
@@ -301,7 +302,7 @@ abline(0,1)
 
 
 ###################################################
-### code chunk number 32: article.Rnw:648-869
+### code chunk number 32: article.Rnw:655-876
 ###################################################
 if (usePreCalcResults) {
  load("vignette_sampling_realworld.RData")

@@ -35,7 +35,7 @@ updatesummary(x, quantiles = c(0.05, 0.5, 0.95), esspara = TRUE,
 \item{latent0}{\code{mcmc} object containing the \emph{latent initial log-volatility} draws from the posterior distribution.}
 \item{y}{argument \code{y}.}
 \item{runtime}{\code{"proc_time"} object containing the run time of the sampler.}
-\item{priors}{\code{list} containing the parameter values of the prior distribution, i.e. the arguments \code{priormu}, \code{priorphi} and \code{priorsigma}.}
+\item{priors}{\code{list} containing the parameter values of the prior distribution, i.e. the arguments \code{priormu}, \code{priorphi}, \code{priorsigma} (and potentially \code{nu}).}
 \item{thinning}{\code{list} containing the thinning parameters, i.e. the arguments \code{thinpara}, \code{thinlatent} and \code{thintime}.}
 \item{summary}{\code{list} containing a collection of summary statistics of the posterior draws for \code{para}, \code{latent}, and \code{latent0}.}
 

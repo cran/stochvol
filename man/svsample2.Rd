@@ -9,8 +9,9 @@ Minimal overhead version of \code{\link{svsample}}.
  \code{svsample2} is a minimal overhead version of \code{\link{svsample}} with slightly different default arguments and a simplified return value structure. It is intended to be used mainly for one-step updates where speed is an issue, e.g., as a plug-in into other MCMC samplers. Note that absolutely no input checking is performed, thus this function is to be used with proper care!
 }
 \usage{
-svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5),
-	  priorsigma = 1, thinpara = 1, thinlatent = 1, thintime = 1,
+svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100),
+	  priorphi = c(5, 1.5), priorsigma = 1, priornu = NA,
+	  thinpara = 1, thinlatent = 1, thintime = 1,
 	  quiet = TRUE, startpara, startlatent)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -32,6 +33,9 @@ svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5),
 }
   \item{priorsigma}{
    single positive real number, which stands for the scaling of the transformed parameter \code{sigma^2}, where \code{sigma} denotes the volatility of log-volatility. More precisely, \code{sigma^2 ~ priorsigma * chisq(df = 1)}. The default value is \code{1}, which constitutes a reasonably vague prior for many common exchange rate datasets, stock returns and the like.
+}
+  \item{priornu}{
+   numeric vector of length 2 (or \code{NA}), indicating the lower and upper bounds for the uniform prior distribution of the parameter \code{nu}, the degrees-of-freedom parameter of the conditional innovations t-distribution. The default value is \code{NA}, fixing the degrees-of-freedom to infinity. This corresponds to conditional standard normal innovations, the pre-1.1.0 behavior of \pkg{stochvol}.
 }
   \item{thinpara}{
    single number greater or equal to 1, coercible to integer. Every \code{thinpara}th parameter draw is kept and returned. The default value is 1, corresponding to no thinning of the parameter draws -- every draw is stored.
@@ -55,7 +59,7 @@ svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5),
 
 \value{
 A list with three components:
-\item{para}{\code{3} times \code{draws} matrix containing the parameter draws.}
+\item{para}{\code{3} times \code{draws} matrix containing the parameter draws. If \code{priornu} is not \code{NA}, this is a \code{4} times \code{draws} matrix.}
 \item{latent}{\code{length(y)} times \code{draws} matrix containing draws of the latent variables \code{h_1, \dots, h_n}.}
 \item{latent0}{Vector of length \code{draws} containing the draw(s) of the initial latent variable \code{h_0}.}
 }

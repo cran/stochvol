@@ -19,10 +19,10 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   const SEXP MHsteps_in, const SEXP B011_in, const SEXP B022_in,
   const SEXP mhcontrol_in, const SEXP gammaprior_in,
   const SEXP truncnormal_in, const SEXP offset_in,
-  const SEXP dontupdatemu_in) {
+  const SEXP dontupdatemu_in, const SEXP priordf_in) {
 
  //RNGScope scope;       // just in case no seed has been set at R level
- GetRNGstate(); // "by hand" because RNGScope isn't save if return
+ GetRNGstate(); // "by hand" because RNGScope isn't safe if return
                 // variables are declared afterwards
 
  // convert SEXP into Rcpp-structures (no copy at this point)
@@ -64,13 +64,19 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  // offset:
  double offset		= as<double>(offset_in);
 
+ // t-errors:
+ bool terr;
+ NumericVector priordf(priordf_in);
+
+ if (ISNA(priordf(0))) terr = false; else terr = true;
+
  // indicator telling us whether assume mu = 0 fixed
  bool dontupdatemu      = as<bool>(dontupdatemu_in);
 
  // moment-matched IG-prior
  double c0 = 2.5;
  double C0 = 1.5*Bsigma;
- 
+
  // pre-calculation of a posterior parameter
  double cT = -10000; 
  if (Gammaprior) {  
@@ -105,10 +111,19 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
 
  NumericMatrix mixprob(10, T);  // mixture probabilities
  NumericVector data = log(y*y + offset);  // commonly used transformation
+ NumericVector datastand = clone(data);  // standardized "data" (different for t-errors)
  NumericVector curpara(3);  // holds mu, phi, sigma in every iteration
  curpara[0] = mu[0];
  curpara[1] = phi[0];
  curpara[2] = 1/sqrt(sigma2inv[0]);
+ 
+ double nu;
+ if (terr) nu = as<double>(startpara["nu"]);
+ NumericVector tau(T, 1.);
+
+ NumericVector nustore(terr * (N+1), nu);
+// NumericMatrix taustore(hstorelength, draws/thin);
+ NumericMatrix taustore(0,0);
 
  // initializes the progress bar
  // "show" holds the number of iterations per progress sign
@@ -120,47 +135,68 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   // print a progress sign every "show" iterations
   if (verbose) if (!(i % show)) progressbar_print();
 
-  /* 
-  Rprintf("data    before: %f\n", data(5));
-   Rprintf("h       before: %f\n", h(2));
-   Rprintf("h0      before: %f\n", h0);
-   Rprintf("curpara before: %f\n", curpara(1));
-   Rprintf("mixprob before: %f\n", mixprob(5,0));
-   Rprintf("mixind  before: %i\n", r(2));
-*/
+  if (terr) {
+   if (centered_baseline) update_terr(data - h, &tau(0), nu, priordf(0), priordf(1));
+   else update_terr(data - curpara(0) - curpara(2) * h, &tau(0), nu, priordf(0), priordf(1));
+   
+   datastand = data - log(tau);
+  }
+
   // a single MCMC update: update indicators, latent volatilities,
   // and parameters ONCE
-  update(data, &curpara(0), &h(0), h0, &mixprob(0,0), &r(0), centered_baseline, C0, cT,
+  update(datastand, &curpara(0), &h(0), h0, &mixprob(0,0), &r(0), centered_baseline, C0, cT,
          Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv, Gammaprior,
 	 truncnormal, MHcontrol, MHsteps, parameterization, dontupdatemu);
-   
- /* Rprintf("mixind  after:  %i\n", r(2));
-   Rprintf("mixprob after:  %f\n", mixprob(5,0));
-   Rprintf("curpara after:  %f\n", curpara(1));
-   Rprintf("h0      after: %f\n", h0);
-   Rprintf("h       after:  %f\n", h(2));
-   Rprintf("data    after:  %f\n\n", data(5));
-   */
 
   // storage:
   if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store h
    store_h(&h(0), &hstore(0, (i-burnin)/thin), timethin, hstorelength,
-            h0, &h0store((i-burnin)/thin), curpara, centered_baseline);
+           &tau(0), &taustore(0, (i-burnin)/thin), 
+           h0, &h0store((i-burnin)/thin), curpara, centered_baseline);
   }
-//  Rprintf("hSTORE  after:  %f\n", hstore(2, (i-burnin)/thin));
   mu[i+1] = curpara[0];
   phi[i+1] = curpara[1];
   sigma2inv[i+1] = 1/(curpara[2]*curpara[2]);
+  if (terr) nustore[i+1] = nu;
  }  // END main MCMC loop
 
  if (verbose) progressbar_finish(N);  // finalize progress bar
 
  // Prepare return value and return
- return cleanUp(mu, phi, sqrt(1/sigma2inv), hstore, h0store);
+ return cleanUp(mu, phi, sqrt(1/sigma2inv), hstore, h0store, nustore, taustore);
 }
 
-// update performs one MCMC sampling step:
+// update_terr performs an update of latent tau and df parameter nu
+void update_terr(const NumericVector &data, 
+                 double *tau, double &nu,
+		 const double lower, const double upper) {
+ 
+ int T = data.length();
+ 
+ // **** STEP 1: Update tau ****
+ 
+ double sumtau = 0.;
+ 
+ for (int i = 0; i < T; i++) {
+  // Watch out, Rf_rgamma(shape, scale), not Rf_rgamma(shape, rate)
+  tau[i] = 1./::Rf_rgamma((nu + 1.) / 2., 2. / (nu + exp(data(i))));
+  sumtau += log(tau[i]) + 1/tau[i];
+ }
 
+
+ // **** STEP 2: Update nu ****
+ 
+ double numean = newtonRaphson(nu, sumtau, T, lower, upper);
+ double auxsd = sqrt(-1/ddlogdnu(numean, T)); 
+ double nuprop = ::Rf_rnorm(numean, auxsd);
+ double logR = logdnu(nuprop, sumtau, T) - logdnu(nu, sumtau, T) +
+               logdnorm(nu, numean, auxsd) - logdnorm(nuprop, numean, auxsd);
+
+ if (log(::Rf_runif(0.,1.)) < logR && nuprop < upper && nuprop > lower) nu = nuprop;
+}
+
+
+// update performs one MCMC sampling step (normal errors):
 void update(const NumericVector &data, double *curpara_in, double *h_in,
             double &h0, double *mixprob, int *r,
 	    const bool centered_baseline, const double C0, const double cT,
@@ -170,21 +206,10 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
 	    const double MHcontrol, const int MHsteps, const int parameterization,
 	    const bool dontupdatemu) {
    
-/*   Rprintf("mixind  in:  %i\n", r[100]);
-   Rprintf("mixprob in:  %f\n", mixprob[100]);
-   Rprintf("curpara in:  %f\n", curpara_in[1]);
-   Rprintf("h0      in:  %f\n", h0);
-   Rprintf("h       in:  %f\n", h_in[100]);
-   Rprintf("data    in:  %f\n\n", data(0));
-
-   Rprintf("\n%i / %f / %f / %f / %f / %f / %f / %f / %f / %f / %i / %i / %f / %i / %i /%i\n\n", centered_baseline, C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv, Gammaprior, truncnormal, MHcontrol, MHsteps, parameterization, dontupdatemu);*/
- 
   int T = data.length();
-  
+
   NumericVector h(T);  // h needs to be NumericVector in current implementation
   for (int j = 0; j < T; j++) h(j) = h_in[j];  // maybe revisit to avoid copying
-  
-  //Rprintf("in_0: %f\n", h(0));
   
   NumericVector curpara(3);  // curpara needs to be NumericVector in current implementation
   for (int j = 0; j < 3; j++) curpara(j) = curpara_in[j];  // maybe revisit to avoid copying
@@ -208,17 +233,9 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   if (centered_baseline) findMixCDF(mixprob, data-h);
   else findMixCDF(mixprob, data-mu-curpara[2]*h); 
 
-//Rprintf("\nDATA: %f, %f, %f, %f, %f\n", (data(0)), data(1), data(2), data(3), data(4));
-//Rprintf("H: %f, %f, %f, %f, %f\n", (h(0)), h(1), h(2), h(3), h(4));
-
-
-//Rprintf("Mixprobs: %f, %f, %f, %f, %f\n", mixprob[0*10+9], mixprob[9 + 1*10], mixprob[9 + 2*10], mixprob[9 + 3*10], mixprob[9 + 4*10]);
-
   // find correct indicators (currently by inversion method)
   invTransformSampling(mixprob, r, T);
   
- // Rprintf("Indicators: %i, %i, %i, %i, %i\n", r[0], r[1], r[2], r[3], r[4]);
-
   /*
    * Step (a): sample the latent volatilities h:
    */
@@ -252,32 +269,22 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
    omega_offdiag = -phi;  // omega_offdiag is constant
   } 
 
-  //Rprintf("covector: %f, %f, %f, %f, %f\n", covector[0], covector[1], covector[2], covector[3], covector[T-1]);
- 
-
   // Cholesky decomposition
   cholTridiag(omega_diag, omega_offdiag, &chol_diag(0), &chol_offdiag(0));
  
   // Solution of Chol*x = covector ("forward algorithm")
   forwardAlg(chol_diag, chol_offdiag, covector, &htmp(0));
   
-  //Rprintf("htmp: %f, %f, %f, %f, %f\n", htmp[0], htmp[1], htmp[2], htmp[3], htmp[T-1]);
-
   htmp = htmp + rnorm(T);
 
   // Solution of (Chol')*x = htmp ("backward algorithm")
   backwardAlg(chol_diag, chol_offdiag, htmp, &h(0));
 
-  //Rprintf("h: %f, %f, %f, %f, %f\n", h[0], h[1], h[2], h[3], h[T-1]);
   // sample h0 | h1, phi, mu, sigma
   if (centered_baseline) h0 = as<double>(rnorm(1, mu + phi*(h[0]-mu),
                                          curpara[2]));
   else h0 = as<double>(rnorm(1, phi*h[0], 1)); 
   
-  //Rprintf("h0: %f\n", h0);
-  //Rprintf("in_1: %f\n", h(0));
-
-//  if (ISNAN(h0)) Rprintf("isnan\nmu:\t%f\nphi:\t%f\nsigma:\t%f\n", mu, phi, curpara[2]);
   /*
    * Step (b): sample mu, phi, sigma
    */
@@ -287,24 +294,17 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
      C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv,
      B022inv, Gammaprior, truncnormal, MHcontrol, MHsteps, dontupdatemu);
 
-//Rprintf("paras: %f, %f, %f\n", curpara[0], curpara[1], curpara[2]);
-
-   
    if (parameterization == 3) {  // this means we should interweave
     double h0_alter;
     htmp = (h-curpara[0])/curpara[2];
-  //Rprintf("htmp: %f, %f, %f, %f, %f\n", htmp[0], htmp[1], htmp[2], htmp[3], htmp[T-1]);
     h0_alter = (h0-curpara[0])/curpara[2];
     curpara = regressionNoncentered(data, h0_alter, htmp, r,
       curpara[0], curpara[1], curpara[2], Bsigma, a0, b0, bmu, Bmu,
       truncnormal, MHsteps, dontupdatemu);
-//Rprintf("paras: %f, %f, %f\n", curpara[0], curpara[1], curpara[2]);
     h = curpara[0] + curpara[2]*htmp;
     h0 = curpara[0] + curpara[2]*h0_alter;
    }
   
-   //Rprintf("h: %f, %f, %f, %f, %f\n", h[0], h[1], h[2], h[3], h[T-1]);
-  //Rprintf("h0: %f\n", h0);
 
   } else {  // NC as base
   
@@ -325,15 +325,6 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   
   for (int j = 0; j < T; j++) h_in[j] = h(j);  // maybe revisit to avoid copying
   for (int j = 0; j < 3; j++) curpara_in[j] = curpara(j);  // maybe revisit to avoid copying
-
-/*   Rprintf("mixind  out:  %i\n", r[500]);
-   Rprintf("mixprob out:  %f\n", mixprob[500]);
-   Rprintf("curpara out:  %f\n", curpara_in[1]);
-   Rprintf("h0      out:  %f\n", h0);
-   Rprintf("h       out:  %f\n", h_in[500]);
-   Rprintf("data    out:  %f\n\n", data(500));*/
-  //Rprintf("in_2: %f\n", h_in[0]);
-
 }
 
 
@@ -570,7 +561,6 @@ Rcpp::NumericVector regressionNoncentered(
   BT22 = 1/Bsigma;
   bT1 = 0;
   bT2 = bmu/Bmu;
- //Rprintf("\n\n TMP: %f, %f, %f\n\n\n", BT11, BT22, bT2);
 
   for (int j = 0; j < T; j++) {
    tmp1 = mix_varinv[r[j]];
@@ -599,7 +589,6 @@ Rcpp::NumericVector regressionNoncentered(
   innov = rnorm(2);
   sigma = bT1 + chol11*innov[0];
   mu = bT2 + chol12*innov[0] + chol22*innov[1];
-  //Rprintf("mu: %f // sigma: %f\n", mu, sigma);
  }
 
 

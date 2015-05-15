@@ -9,7 +9,7 @@ Displays quantiles of the posterior distribution of the volatilities over time a
 \usage{
 volplot(x, forecast = 0, dates = NULL, show0 = FALSE, col = NULL,
        	forecastlty = NULL, tcl = -0.4, mar = c(1.9, 1.9, 1.9, 0.5),
-       	mgp = c(2, 0.6, 0), ...)
+       	mgp = c(2, 0.6, 0), simobj = NULL, ...)
 }
 \arguments{
   \item{x}{
@@ -20,7 +20,7 @@ volplot(x, forecast = 0, dates = NULL, show0 = FALSE, col = NULL,
   }
   
   \item{dates}{
-   vector of length \code{ncol(x$latent)}, providing optional dates for labelling the x-axis. The default value is \code{NULL}; in this case, the axis will be labelled with numbers.
+   vector of length \code{ncol(x$latent)}, providing optional dates for labeling the x-axis. The default value is \code{NULL}; in this case, the axis will be labeled with numbers.
 }
   \item{show0}{
    logical value, indicating whether the initial volatility \code{exp(h_0/2)} should be displayed. The default value is \code{FALSE}.
@@ -34,6 +34,8 @@ volplot(x, forecast = 0, dates = NULL, show0 = FALSE, col = NULL,
   \item{mar}{numerical vector of length 4, indicating the plot margins. See \code{\link[graphics]{par}} for details. The default value is \code{c(1.9, 1.9, 1.9, 0.5)}, which is slightly smaller than the R-defaults.
 }
   \item{mgp}{numerical vector of length 3, indicating the axis and label positions. See \code{\link[graphics]{par}} for details. The default value is \code{c(2, 0.6, 0)}, which is slightly smaller than the R-defaults.
+}
+  \item{simobj}{object of class \code{svsim} as returned by the SV simulation function \code{\link{svsim}}. If provided, ``true'' data generating values will be added to the plot(s).
 }
   \item{\dots}{
   further arguments are passed on to the invoked \code{ts.plot} function.

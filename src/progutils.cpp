@@ -2,14 +2,17 @@
 
 /* Contains the following code modules:
 
-   a) Some helper functions such as progress bar tools and return value
+   a) some helper functions such as progress bar tools and return value
       prettifier
 
-   b) Some functions related to the Cholesky decomposition used for 
+   b) some functions related to the Cholesky decomposition used for 
       sampling AWOL and efficiently solving the systems of linear
       equations
 
    c) function for inverse transform sampling
+
+   d) a very basic Newton-Raphson algorithm for finding the root
+      of dlogdnu (defined in densities.h)
 */
 
 // a)
@@ -18,12 +21,17 @@ Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
                    const Rcpp::NumericVector & phi,
 		   const Rcpp::NumericVector & sigma,
 		   const Rcpp::NumericMatrix & hstore,
-		   const Rcpp::NumericVector & h0store) {
-
- Rcpp::NumericMatrix res(mu.length(), 3); 
+		   const Rcpp::NumericVector & h0store,
+		   const Rcpp::NumericVector & nustore,
+		   const Rcpp::NumericMatrix & taustore) {
+ int paracols;
+ if (nustore.size() > 0) paracols = 4; else paracols = 3;
+ 
+ Rcpp::NumericMatrix res(mu.length(), paracols); 
  res(Rcpp::_,0) = mu;
  res(Rcpp::_,1) = phi;
  res(Rcpp::_,2) = sigma;
+ if (nustore.size() > 0) res(Rcpp::_,3) = nustore;
 
 /* res.attr("dimnames") = Rcpp::List::create(
    R_NilValue, 
@@ -33,6 +41,7 @@ Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
    Rcpp::_["para"] = res,
    Rcpp::_["latent"] = hstore,
    Rcpp::_["latent0"] = h0store);
+//   Rcpp::_["tau"] = taustore);
 
  return val;
 }
@@ -133,3 +142,27 @@ void invTransformSampling(const double * const mixprob, int * r, int T) {
  r[j] = index;
  }
 }
+
+// d)
+// find the root of a function (Newton-Raphson)
+double newtonRaphson(double startval, double sumtau, int n,
+                     double lower, double upper, double tol,
+		     int maxiter) {
+ double x = startval;
+ double error = R_PosInf;
+ double xnew;
+ bool converged = false;
+ for (int i; i < maxiter; i++) {
+  xnew = x - dlogdnu(x, sumtau, n)/ddlogdnu(x, n);
+  if (xnew > upper) xnew = upper; else if (xnew < lower) xnew = lower;
+  error = fabs(xnew - x);
+  x = xnew;
+  if (error < tol) {
+   converged = true;
+   break;
+  }
+ }
+ if (!converged) x = NA_REAL;
+ return x;
+}
+
