@@ -453,11 +453,11 @@ colMeans(draws1)
 
 <<homo, echo=FALSE, fig=TRUE, include=FALSE, width=7.5, height=6>>=
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
-plot(coda::mcmc(draws1))
+plot(coda::mcmc(draws1), show.obs = FALSE)
 @
 
 <<eval=FALSE>>=
-plot(coda::mcmc(draws1))
+plot(coda::mcmc(draws1), show.obs = FALSE)
 @
 
 
@@ -564,12 +564,12 @@ for (i in -(burnin-1):draws) {
 \item Finally, visualize and summarize (some) posterior draws:
 
 <<eval=FALSE>>=
-plot(coda::mcmc(draws2[, 4:7]))
+plot(coda::mcmc(draws2[, 4:7]), show.obs = FALSE)
 @
 
 <<hetero, fig=TRUE, include=FALSE, echo=FALSE, results=hide, width=7.5, height=8>>=
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
-plot(coda::mcmc(draws2selection[, 1:4]))
+plot(coda::mcmc(draws2selection[, 1:4]), show.obs = FALSE)
 @
 
 \begin{figure}[!ht]

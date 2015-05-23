@@ -1,3 +1,10 @@
+Changes in Version 1.1.1:
+  - Fixed "uninitialized variable" in function newtonRaphson
+    (progutils.cpp). Warning appeared when building for Windows.
+  - Minor changes in main vignette (article.Rnw) so that the included
+    plots have smaller file size and the package does not exceed the 5MB
+    limit (was the case on r-patched-solaris-sparc).
+
 Changes in Version 1.1.0:
   - Introduced sampling and simulating conditional t-innvoations.
     (Hopefully) all affected functions

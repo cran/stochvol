@@ -165,13 +165,13 @@ colMeans(draws1)
 ### code chunk number 20: homo
 ###################################################
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
-plot(coda::mcmc(draws1))
+plot(coda::mcmc(draws1), show.obs = FALSE)
 
 
 ###################################################
 ### code chunk number 21: article.Rnw:459-460 (eval = FALSE)
 ###################################################
-## plot(coda::mcmc(draws1))
+## plot(coda::mcmc(draws1), show.obs = FALSE)
 
 
 ###################################################
@@ -266,14 +266,14 @@ for (i in -(burnin-1):draws) {
 ###################################################
 ### code chunk number 27: article.Rnw:566-567 (eval = FALSE)
 ###################################################
-## plot(coda::mcmc(draws2[, 4:7]))
+## plot(coda::mcmc(draws2[, 4:7]), show.obs = FALSE)
 
 
 ###################################################
 ### code chunk number 28: hetero
 ###################################################
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
-plot(coda::mcmc(draws2selection[, 1:4]))
+plot(coda::mcmc(draws2selection[, 1:4]), show.obs = FALSE)
 
 
 ###################################################

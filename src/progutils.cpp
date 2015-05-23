@@ -152,7 +152,7 @@ double newtonRaphson(double startval, double sumtau, int n,
  double error = R_PosInf;
  double xnew;
  bool converged = false;
- for (int i; i < maxiter; i++) {
+ for (int i = 0; i < maxiter; i++) {
   xnew = x - dlogdnu(x, sumtau, n)/ddlogdnu(x, n);
   if (xnew > upper) xnew = upper; else if (xnew < lower) xnew = lower;
   error = fabs(xnew - x);
