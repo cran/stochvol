@@ -340,8 +340,8 @@ Rcpp::NumericVector regressionCentered(
        const bool dontupdatemu) {
  
  int T = h.length();
- double z, CT, sum1, sum2, sum3, sum4, tmp1,
-       	BT11, BT12, BT22, bT1, bT2, chol11, chol12, chol22, phi_prop,
+ double z, CT, sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, tmp1,
+       	BT11, BT12, BT22, bT1 = 0, bT2 = 0, chol11, chol12, chol22, phi_prop,
        	gamma_prop, tmpR, tmpR2, logR;
  double R = -10000.;
  double sigma2_prop = -10000.;

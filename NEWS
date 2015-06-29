@@ -1,3 +1,6 @@
+Changes in Version 1.1.2:
+  - Fixed missing imports from non-base default packages.
+
 Changes in Version 1.1.1:
   - Fixed "uninitialized variable" in function newtonRaphson
     (progutils.cpp). Warning appeared when building for Windows.

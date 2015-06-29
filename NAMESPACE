@@ -1,6 +1,9 @@
 useDynLib(stochvol)
 
 import(methods)
+import(stats)
+import(graphics)
+import(utils)
 importFrom(Rcpp, evalCpp)
 import(coda) 
 
