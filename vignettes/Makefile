@@ -15,4 +15,4 @@ heavytails.pdf: heavytails.tex
 	pdflatex heavytails
 
 clean:
-	rm -rf article.tex article.aux article.bbl article.blg article.log article.out article-*.pdf heavytails.Rnw heavytails.aux heavytails.bbl heavytails.blg heavytails.log heavytails.out heavytails-*.pdf
+	rm -rf article.tex article.aux article.bbl article.blg article.log article.out article-*.pdf heavytails.tex heavytails.aux heavytails.bbl heavytails.blg heavytails.log heavytails.out heavytails-*.pdf

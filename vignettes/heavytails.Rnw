@@ -40,6 +40,9 @@
 
 \begin{document}
 
+<<preliminaries, echo=FALSE, results=hide>>=
+options(prompt = 'R> ', continue = '+  ')
+@
 
 \section*{Preface}
 This note serves as a preliminary add-on to the more elaborate article ``Dealing with Stochastic Volatility in Time Series using the \proglang{R} package \pkg{stochvol}'' \citep{kas:dea}. It discusses and relaxes the restriction to conditionally normal errors in the vanilla stochastic volatility (SV) model.
@@ -60,16 +63,14 @@ i.e., conditionally on $\hsv_t$, the data is assumed to follow a zero-mean non-s
 \section{Usage}
 Estimating a stochastic volatility model with conditional $t$ errors via \pkg{stochvol} is very similar to estimating a model with standard Gaussian errors, differing only through specifying a non-\code{NA} argument \code{priornu}. This triggers the sampler specified in Section~\ref{sec:alg}. To provide an example, we investigate the historical daily EUR/CHF exchange rates and display these in Figure~\ref{fig:data}.
 
-\begin{Schunk}
-\begin{Sinput}
-R> library(stochvol)
-R> data(exrates)
-R> par(mfrow = c(2, 1), mar = c(1.7, 1.7, 1.7, 0.1), mgp = c(1.6, 0.6, 0))
-R> plot(exrates$date, exrates$CHF, type = 'l', main = 'Price of 1 EUR in CHF')
-R> dat <- logret(exrates$CHF, demean = TRUE)
-R> plot(exrates$date[-1], dat, type = 'l', main = 'Demeaned log returns')
-\end{Sinput}
-\end{Schunk}
+<<data, fig=TRUE, include=FALSE, width=10, height=6, echo=TRUE>>=
+library(stochvol)
+data(exrates)
+par(mfrow = c(2, 1), mar = c(1.7, 1.7, 1.7, 0.1), mgp = c(1.6, 0.6, 0))
+plot(exrates$date, exrates$CHF, type = 'l', main = 'Price of 1 EUR in CHF')
+dat <- logret(exrates$CHF, demean = TRUE)
+plot(exrates$date[-1], dat, type = 'l', main = 'Demeaned log returns')
+@
 
 \begin{figure}[!ht]
 \begin{center}
@@ -81,21 +82,17 @@ R> plot(exrates$date[-1], dat, type = 'l', main = 'Demeaned log returns')
 
 First, we fit a standard SV model to the data. Then, by specifying the argument \code{priornu} (a two-element vector containing the lower and upper bounds of the uniform prior for $\nu$), we can trigger the sampler allowing for heavy-tailed conditional innovations. 
 
-\begin{Schunk}
-\begin{Sinput}
-R> res <- svsample(dat, priormu = c(-12, 1), priorphi = c(20, 1.1),
-+    priorsigma = 0.1)
-R> plot(res, showobs = FALSE)
-\end{Sinput}
-\end{Schunk}
+<<normalerr, fig=TRUE, include=FALSE, width=10, height=6, echo=TRUE>>=
+res <- svsample(dat, priormu = c(-12, 1), priorphi = c(20, 1.1),
+  priorsigma = 0.1)
+plot(res, showobs = FALSE)
+@
 
-\begin{Schunk}
-\begin{Sinput}
-R> rest <- svsample(dat, priormu = c(-12, 1), priorphi = c(20, 1.1),
-+    priorsigma = 0.1, priornu = c(2, 100))
-R> plot(rest, showobs = FALSE)
-\end{Sinput}
-\end{Schunk}
+<<terr, fig=TRUE, include=FALSE, width=10, height=7, echo=TRUE>>=
+rest <- svsample(dat, priormu = c(-12, 1), priorphi = c(20, 1.1),
+  priorsigma = 0.1, priornu = c(2, 100))
+plot(rest, showobs = FALSE)
+@
 
 Results are displayed in Figure \ref{fig:res}, where the top panel (rows 1 to 3) corresponds to the output from the standard SV model and the bottom panel (rows 4 to 7) contains the output from the SV-$t$ model. Row~4 depicts $\exp(h_t/2)$ for $t \in \{1,\dots,n\}$; row~5 shows the time varying standard deviations given through $\sqrt{\nu/(\nu-2)}\exp(h_t/2)$ for $t \in \{1,\dots,n\}$; row~6 portrays trace plots and row~7 outlines the corresponding smoothed kernel density estimates for the four parameters $\mu$, $\phi$, $\sigma$, and $\nu$. It is worth noting that $\nu$ is estimated to lie between $6$ and $18$ with high posterior probability, indicating evidence for the presence of heavy tails even after catering for stochastic volatility. The extra flexibility of the SV-$t$ sampler seems to allow for increased persistence $\phi$ and smaller variance of log-volatility $\sigma^2$, resulting in smoother time-varying volatility estimates.
 
