@@ -12,14 +12,16 @@ using namespace Rcpp; // avoid to type Rcpp:: every time
 
 // RcppExport is an alias for 'extern "C"'
 RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
-  const SEXP burnin_in, const SEXP bmu_in, const SEXP Bmu_in,
+  const SEXP burnin_in, const SEXP X_in,
+  const SEXP bmu_in, const SEXP Bmu_in,
   const SEXP a0_in, const SEXP b0_in, const SEXP Bsigma_in,
   const SEXP thin_in, const SEXP timethin_in, const SEXP startpara_in,
   const SEXP startvol_in, const SEXP quiet_in, const SEXP para_in,
   const SEXP MHsteps_in, const SEXP B011_in, const SEXP B022_in,
   const SEXP mhcontrol_in, const SEXP gammaprior_in,
   const SEXP truncnormal_in, const SEXP offset_in,
-  const SEXP dontupdatemu_in, const SEXP priordf_in) {
+  const SEXP dontupdatemu_in, const SEXP priordf_in,
+  const SEXP priorbeta_in) {
 
  //RNGScope scope;       // just in case no seed has been set at R level
  GetRNGstate(); // "by hand" because RNGScope isn't safe if return
@@ -27,11 +29,26 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
 
  // convert SEXP into Rcpp-structures (no copy at this point)
  NumericVector y(y_in), startvol(startvol_in);
+ arma::vec armay(y.begin(), y.length(), false);
+
+ NumericMatrix X(X_in);
+
+ int T = y.length();
+ int p = X.ncol();
+ arma::mat armaX(X.begin(), T, p, false);
+ 
+ // should we model the mean as well?
+ bool regression;
+ if (ISNA(X(0,0))) regression = false; else regression = true;
+ NumericVector priorbeta(priorbeta_in);
+
+ // prior mean and precision matrix for the regression part (currently fixed)
+ arma::vec priorbetamean(p); priorbetamean.fill(priorbeta(0));
+ arma::mat priorbetaprec(p, p, arma::fill::zeros);
+ priorbetaprec.diag() += 1./(priorbeta(1)*priorbeta(1));
+ 
  List startpara(startpara_in);
 
- // length of time series
- int T = y.length();
- 
  // number of MCMC draws
  int burnin = as<int>(burnin_in);
  int draws  = as<int>(draws_in);
@@ -110,20 +127,40 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  NumericVector h0store(draws/thin);
 
  NumericMatrix mixprob(10, T);  // mixture probabilities
+ 
  NumericVector data = log(y*y + offset);  // commonly used transformation
+ arma::vec armadata(data.begin(), data.length(), false);
+ 
  NumericVector datastand = clone(data);  // standardized "data" (different for t-errors)
+ arma::vec armadatastand(datastand.begin(), datastand.length(), false);
+ 
  NumericVector curpara(3);  // holds mu, phi, sigma in every iteration
  curpara[0] = mu[0];
  curpara[1] = phi[0];
  curpara[2] = 1/sqrt(sigma2inv[0]);
  
+ // some stuff for the t-errors
  double nu;
  if (terr) nu = as<double>(startpara["nu"]);
  NumericVector tau(T, 1.);
 
  NumericVector nustore(terr * (N+1), nu);
-// NumericMatrix taustore(hstorelength, draws/thin);
+ // NumericMatrix taustore(hstorelength, draws/thin);
  NumericMatrix taustore(0,0);
+
+ // some stuff for the regression part
+ NumericVector curbeta(p, .012345);
+ arma::vec armabeta(curbeta.begin(), curbeta.length(), false);
+ arma::vec normalizer;
+ arma::mat Xnew = as<arma::mat>(clone(X));
+ arma::vec ynew = as<arma::vec>(clone(y));
+ arma::mat postprecchol(p, p);
+ arma::mat postpreccholinv(p, p);
+ arma::mat postcov(p, p);
+ arma::vec postmean(p);
+ arma::vec armadraw(p);
+ NumericMatrix betastore(regression * (N+1), p);
+ arma::mat armabetastore(betastore.begin(), betastore.nrow(), betastore.ncol(), false);
 
  // initializes the progress bar
  // "show" holds the number of iterations per progress sign
@@ -135,6 +172,10 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   // print a progress sign every "show" iterations
   if (verbose) if (!(i % show)) progressbar_print();
 
+  if (regression) {
+   armadatastand = armadata = log(square(armay - armaX * armabeta));
+  }
+  
   if (terr) {
    if (centered_baseline) update_terr(data - h, &tau(0), nu, priordf(0), priordf(1));
    else update_terr(data - curpara(0) - curpara(2) * h, &tau(0), nu, priordf(0), priordf(1));
@@ -148,8 +189,30 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
          Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv, Gammaprior,
 	 truncnormal, MHcontrol, MHsteps, parameterization, dontupdatemu);
 
+  if (regression) { // update betas (regression)
+   normalizer = exp(-h/2);
+   Xnew = armaX;
+   Xnew.each_col() %= normalizer;
+   ynew = as<arma::vec>(y) % normalizer;
+   
+   // cholesky factor of posterior precision matrix
+   postprecchol = arma::chol(Xnew.t() * Xnew + priorbetaprec);
+   
+   // inverse cholesky factor of posterior precision matrix 
+   postpreccholinv = arma::solve(arma::trimatu(postprecchol), arma::eye<arma::mat>(p, p));
+
+   // posterior covariance matrix and posterior mean vector
+   postcov = postpreccholinv * postpreccholinv.t();
+   postmean = postcov * (Xnew.t() * ynew + priorbetaprec * priorbetamean);
+
+   armadraw = rnorm(p);
+
+   // posterior betas
+   armabeta = postmean + postpreccholinv * armadraw;
+  }
+  
   // storage:
-  if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store h
+  if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store
    store_h(&h(0), &hstore(0, (i-burnin)/thin), timethin, hstorelength,
            &tau(0), &taustore(0, (i-burnin)/thin), 
            h0, &h0store((i-burnin)/thin), curpara, centered_baseline);
@@ -158,12 +221,13 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   phi[i+1] = curpara[1];
   sigma2inv[i+1] = 1/(curpara[2]*curpara[2]);
   if (terr) nustore[i+1] = nu;
+  if (regression) armabetastore.row(i+1) = armabeta.t();
  }  // END main MCMC loop
 
  if (verbose) progressbar_finish(N);  // finalize progress bar
 
  // Prepare return value and return
- return cleanUp(mu, phi, sqrt(1/sigma2inv), hstore, h0store, nustore, taustore);
+ return cleanUp(mu, phi, sqrt(1/sigma2inv), hstore, h0store, nustore, taustore, betastore);
 }
 
 // update_terr performs an update of latent tau and df parameter nu
@@ -194,7 +258,6 @@ void update_terr(const NumericVector &data,
 
  if (log(::Rf_runif(0.,1.)) < logR && nuprop < upper && nuprop > lower) nu = nuprop;
 }
-
 
 // update performs one MCMC sampling step (normal errors):
 void update(const NumericVector &data, double *curpara_in, double *h_in,

@@ -1,7 +1,7 @@
 #ifndef _AUXMIX_H_
 #define _AUXMIX_H_
 
-#include <Rcpp.h>
+#include <RcppArmadillo.h>
 
 // Some constants relating to the approximation of log(chisq) trough
 // normal mixture (from Omori et al., 2007), and

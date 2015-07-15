@@ -1,6 +1,6 @@
 # R wrapper function for the main MCMC loop
 
-svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, thinpara = 1, thinlatent = 1, thintime = 1, quiet = FALSE, startpara, startlatent, expert, ...) {
+svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, priorbeta = c(0, 10000), thinpara = 1, thinlatent = 1, thintime = 1, quiet = FALSE, startpara, startlatent, expert, ...) {
  
  # Some error checking for y
  if (is(y, "svsim")) {
@@ -17,24 +17,49 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  } else myoffset <- 0
 
  # Some error checking for draws
- if (!is.numeric(draws) | draws < 1) {
+ if (!is.numeric(draws) || length(draws) != 1 || draws < 1) {
   stop("Argument 'draws' (number of MCMC iterations after burn-in) must be a single number >= 1.")
  } else {
   draws <- as.integer(draws)
  }
 
  # Some error checking for burnin
- if (!is.numeric(burnin) | burnin < 0) {
+ if (!is.numeric(burnin) || length(draws) != 1 || burnin < 0) {
   stop("Argument 'burnin' (burn-in period) must be a single number >= 0.")
  } else {
   burnin <- as.integer(burnin)
  }
  
+ # Some error checking for designmatrix
+ if (any(is.na(designmatrix))) {
+  designmatrix <- matrix(NA)
+ } else {
+  if (any(grep("ar[0-9]+$", as.character(designmatrix)[1]))) {
+   order <- as.integer(gsub("ar", "", as.character(designmatrix)))
+   if (length(y) <= order + 1) stop("Time series 'y' is to short for this AR process.")
+   designmatrix <- matrix(rep(1, length(y) - order), ncol = 1)
+   colnames(designmatrix) <- c("const")
+   if (order >= 1) {
+    for (i in 1:order) {
+     oldnames <- colnames(designmatrix)
+     designmatrix <- cbind(designmatrix, y[(order-i+1):(length(y)-i)])
+     colnames(designmatrix) <- c(oldnames, paste0("ar", i))
+    }
+    y <- y[-(1:order)]
+   }
+  }
+  if (!is.numeric(designmatrix)) stop("Argument 'designmatrix' must be a numeric matrix or an AR-specification.")
+  if (!is.matrix(designmatrix)) {
+   designmatrix <- matrix(designmatrix, ncol = 1)
+  }
+  if (!nrow(designmatrix) == length(y)) stop("Number of columns of argument 'designmatrix' must be equal to length(y).")
+ }
+
  # Some error checking for the prior parameters 
- if (!is.numeric(priormu) | length(priormu) != 2) {
+ if (!is.numeric(priormu) || length(priormu) != 2) {
   stop("Argument 'priormu' (mean and sd for the Gaussian prior for mu) must be numeric and of length 2.")
  }
- 
+
  if (!is.numeric(priorphi) | length(priorphi) != 2) {
   stop("Argument 'priorphi' (shape1 and shape2 parameters for the Beta prior for (phi+1)/2) must be numeric and of length 2.")
  }
@@ -51,23 +76,31 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
   }
  }
 
+ if (!is.numeric(priorbeta) || length(priorbeta) != 2) {
+   stop("Argument 'priorbeta' (means and sds for the independent Gaussian priors for beta) must be numeric and of length 2.")
+ }
+
  # Some error checking for thinpara
- if (!is.numeric(thinpara) | thinpara < 1) {
+ if (!is.numeric(thinpara) || length(thinpara) != 1 || thinpara < 1) {
   stop("Argument 'thinpara' (thinning parameter for mu, phi, and sigma) must be a single number >= 1.")
  } else {
   thinpara <- as.integer(thinpara)
  }
 
  # Some error checking for thinlatent
- if (!is.numeric(thinlatent) | thinlatent < 1) {
+ if (!is.numeric(thinlatent) || length(thinlatent) != 1 || thinlatent < 1) {
   stop("Argument 'thinlatent' (thinning parameter for the latent log-volatilities) must be a single number >= 1.")
  } else {
   thinlatent <- as.integer(thinlatent)
  }
 
  # Some error checking for thintime
- if (!is.numeric(thintime) | thintime < 1) {
-  stop("Argument 'thintime' (thinning parameter for time) must be a single number >= 1.")
+ if (!is.numeric(thintime) || length(thintime) != 1 || thintime < 1) {
+  if (thintime == 'firstlast') {
+   thintime <- length(y) - 1L
+  } else {
+   stop("Argument 'thintime' (thinning parameter for time) must be a single number >= 1 or 'firstlast'.")
+  }
  } else {
   thintime <- as.integer(thintime)
  }
@@ -215,11 +248,11 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet  # Hack to prevent console flushing problems with Windows
 
   runtime <- system.time(res <-
-  .Call("sampler", y, draws, burnin,
+  .Call("sampler", y, draws, burnin, designmatrix,
        	priormu[1], priormu[2]^2, priorphi[1], priorphi[2], priorsigma, 
        	thinlatent, thintime, startpara, startlatent, myquiet, para,
 	mhsteps, B011, B022, mhcontrol, gammaprior, truncnormal,
-	myoffset, FALSE, priornu, PACKAGE = "stochvol"))
+	myoffset, FALSE, priornu, priorbeta, PACKAGE = "stochvol"))
 
  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
   
@@ -237,6 +270,10 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  res$para <- mcmc(res$para[seq(burnin+thinpara+1, burnin+draws+1, thinpara),,drop=FALSE], burnin+thinpara, burnin+draws, thinpara)
  res$latent <- mcmc(t(res$latent), burnin+thinlatent, burnin+draws, thinlatent)
  res$latent0 <- mcmc(res$latent0, burnin+thinlatent, burnin+draws, thinlatent)
+ if (!any(is.na(designmatrix))) {
+  res$beta <- mcmc(res$beta[seq(burnin+thinpara+1, burnin+draws+1, thinpara),,drop=FALSE], burnin+thinpara, burnin+draws, thinpara)
+  attr(res$beta, "dimnames") <- list(NULL, paste("b", 0:(ncol(designmatrix)-1), sep = "_"))
+ } else res$beta <- NULL
  
  if (ncol(res$para) == 3) {
   attr(res$para, "dimnames") <- list(NULL, c("mu", "phi", "sigma"))
@@ -245,6 +282,10 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
   attr(res$para, "dimnames") <- list(NULL, c("mu", "phi", "sigma", "nu"))
   res$priors <- list(mu = priormu, phi = priorphi, sigma = priorsigma, nu = priornu)
   #res$tau <- mcmc(t(res$tau), burnin+thinlatent, burnin+draws, thinlatent)
+ }
+
+ if (!any(is.na(designmatrix))) {
+  res$priors <- c(res$priors, "beta" = list(priorbeta), "designmatrix" = list(designmatrix))
  }
  
  attr(res$latent, "dimnames") <- list(NULL, paste('h_', seq(1, length(y), by=thintime), sep=''))
@@ -262,14 +303,14 @@ svsample <- function(y, draws = 10000, burnin = 1000, priormu = c(0, 100), prior
  res
 }
 
-# This function does not check input nor converts the result to coda objects
+# This function does not check input nor converts the result to coda objects!
 
 svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, thinpara = 1, thinlatent = 1, thintime = 1, quiet = TRUE, startpara, startlatent) {
 
- res <- .Call("sampler", y, draws, burnin, priormu[1], priormu[2]^2,
+ res <- .Call("sampler", y, draws, burnin, matrix(NA), priormu[1], priormu[2]^2,
 	      priorphi[1], priorphi[2], priorsigma, thinlatent,
 	      thintime, startpara, startlatent, quiet, 3L, 2L, 10^8, 10^12,
-	      -1, TRUE, FALSE, 0, FALSE, priornu, PACKAGE = "stochvol")
+	      -1, TRUE, FALSE, 0, FALSE, priornu, c(NA, NA), PACKAGE = "stochvol")
 
  res$para <- t(res$para[-1,,drop=FALSE])
  if (nrow(res$para) == 3) {

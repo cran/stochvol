@@ -32,6 +32,7 @@ updatesummary <- function(x, quantiles = c(.05, .5, .95), esspara = TRUE, esslat
  
  # NEW: Check if conditional t errors are used
  if (ncol(x$para) == 4) terr <- TRUE else terr <- FALSE
+ if (exists("betas", x)) regression <- TRUE else regression <- FALSE
 
  summaryfunction <- function(x, quants = quantiles, ess = TRUE) {
   if (ess) {
@@ -60,6 +61,8 @@ updatesummary <- function(x, quantiles = c(.05, .5, .95), esspara = TRUE, esslat
   res$sd <- t(apply(tmp, 2, summaryfunction, ess = esslatent))
   rownames(res$sd) <- gsub("h", "sd", rownames(res$latent))
  }
+
+ if (exists("beta", x)) res$beta <- t(apply(x$beta, 2, summaryfunction, ess = esspara))
  
  x$summary <- res
  x
@@ -161,22 +164,15 @@ predict.svdraws <- function(object, steps = 1L, ...) {
  sigma <- object$para[,"sigma"][usepara]
  hlast <- object$latent[,dim(object$latent)[2]][uselatent]
 
- # NEW: check if df parameter nu was sampled as well
- if (ncol(object$para) == 4) {
-  nu <- object$para[,"nu"][usepara]
- } else {
-  nu <- Inf  # corresponds to conditional normality
- }
-
  mythin <- max(thinpara, thinlatent)
  len <- length(sigma)
  volpred <- mcmc(matrix(as.numeric(NA), nrow=len, ncol=steps), start=mythin, end=len*mythin, thin=mythin)
  
- volpred[,1] <- mu + phi*(hlast - mu) + sigma*rt(len, df = nu)
+ volpred[,1] <- mu + phi*(hlast - mu) + sigma*rnorm(len)
  if (steps > 1)
   for (i in (seq.int(steps-1) + 1))
-   volpred[,i] <- mu + phi*(volpred[,i-1] - mu) + sigma*rt(len, df = nu)
- 
+   volpred[,i] <- mu + phi*(volpred[,i-1] - mu) + sigma*rnorm(len)
+
  class(volpred) <- c("svpredict", "mcmc")
  lastname <- dimnames(object$latent)[[2]][dim(object$latent)[2]]
  lastnumber <- as.integer(gsub("h_", "", lastname))
@@ -184,3 +180,43 @@ predict.svdraws <- function(object, steps = 1L, ...) {
  volpred
 }
 
+# used to forecast AR-SV models (needs more testing!)
+arpredict <- function(object, volpred) {
+ if (!is(object, "svdraws")) stop("Argument 'object' must be of class 'svdraws'.")
+ if (!is(volpred, "svpredict")) stop("Argument 'volpred' must be of class 'svpredict'.")
+ if (colnames(object$priors$designmatrix)[1] == "const") dynamic <- TRUE else stop("Probably not an AR-specification.")
+ order <- ncol(object$priors$designmatrix) - 1
+
+ len <- nrow(volpred)
+ steps <- ncol(volpred)
+ fromtoby <- attr(volpred, "mcpar")
+ usepara <- seq(from = fromtoby[1], to = fromtoby[2], by = fromtoby[3])
+
+ if (ncol(object$para) == 4) {
+  nu <- object$para[,"nu"][usepara]
+ } else {
+  nu <- Inf  # corresponds to conditional normality
+ }
+
+ if (ncol(object$beta) > 1) {
+  betarev <- object$beta[usepara,c(1,ncol(object$beta):2)]
+  lastX <- matrix(c(1, object$y[length(object$y) - order:1 + 1]), nrow = 1)
+ } else {
+  betarev <- object$beta[usepara,,drop=FALSE]
+  lastX <- matrix(1, nrow = 1)
+ }
+
+ meanpred <- mcmc(matrix(as.numeric(NA), nrow = len, ncol = steps),
+		  start = fromtoby[1], end = fromtoby[2], thin = fromtoby[3])
+ meanpred[,1] <- tcrossprod(lastX, betarev) + exp(volpred[,1]/2)*rt(len, df = nu)
+ if (steps > 1) {
+  lastX <- matrix(rep(lastX, len), nrow = len, byrow = TRUE)
+  for (i in (seq.int(steps-1) + 1)) {
+   if (ncol(object$beta) > 1)
+    lastX <- cbind(lastX[,-2, drop = FALSE], meanpred[,i-1])
+   meanpred[,i] <- rowSums(lastX*betarev) + exp(volpred[,i]/2)*rt(len, df = nu)
+  }
+ }
+ class(meanpred) <- c("distpredict", "mcmc")
+ meanpred
+}

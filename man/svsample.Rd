@@ -5,13 +5,13 @@
 Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility (SV) Model
 }
 \description{
-\code{svsample} simulates from the joint posterior distribution of the SV parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu}), along with the latent log-volatilities \code{h_0,...,h_n} and returns the MCMC draws.
+\code{svsample} simulates from the joint posterior distribution of the SV parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu}), along with the latent log-volatilities \code{h_0,...,h_n} and returns the MCMC draws. If a design matrix is provided, simple Bayesian regression can also be conducted.
 }
 \usage{
-svsample(y, draws = 10000, burnin = 1000, priormu = c(0, 100),
-         priorphi = c(5, 1.5), priorsigma = 1, priornu = NA,
-	 thinpara = 1, thinlatent = 1, thintime = 1, quiet = FALSE,
-	 startpara, startlatent, expert, ...)
+svsample(y, draws = 10000, burnin = 1000, designmatrix = NA,
+	 priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
+	 priornu = NA, priorbeta = c(0, 10000), thinpara = 1, thinlatent = 1,
+	 thintime = 1, quiet = FALSE, startpara, startlatent, expert, ...)
 }
 \arguments{
   \item{y}{
@@ -22,6 +22,9 @@ svsample(y, draws = 10000, burnin = 1000, priormu = c(0, 100),
 }
   \item{burnin}{
    single number greater or equal to 0, indicating the number of draws discarded as burn-in. Will be automatically coerced to integer. The default value is 1000.
+}
+  \item{designmatrix}{
+   regression design matrix for modeling the mean. Must have \code{length(y)} rows. Alternatively, \code{designmatrix} may be a string of the form \code{"arX"}, where \code{X} is a nonnegative integer. To fit a constant mean model, use \code{designmatrix = "ar0"} (which is equivalent to \code{designmatrix = matrix(1, nrow = length(y))}). To fit an AR(1) model, use \code{designmatrix = "ar1"}, and so on. If some elements of \code{designmatrix} are \code{NA}, the mean is fixed to zero (pre-1.2.0 behavior of \pkg{stochvol}).
 }
   \item{priormu}{
    numeric vector of length 2, indicating mean and standard deviation for the Gaussian prior distribution of the parameter \code{mu}, the level of the log-volatility. The default value is \code{c(0, 100)}, which constitutes a practically uninformative prior for common exchange rate datasets, stock returns and the like.
@@ -34,6 +37,9 @@ svsample(y, draws = 10000, burnin = 1000, priormu = c(0, 100),
 }
   \item{priornu}{
    numeric vector of length 2 (or \code{NA}), indicating the lower and upper bounds for the uniform prior distribution of the parameter \code{nu}, the degrees-of-freedom parameter of the conditional innovations t-distribution. The default value is \code{NA}, fixing the degrees-of-freedom to infinity. This corresponds to conditional standard normal innovations, the pre-1.1.0 behavior of \pkg{stochvol}.
+}
+  \item{priorbeta}{
+   numeric vector of length 2, indicating the mean and standard deviation of the Gaussian prior for the regression parameters. The default value is \code{c(0, 10000)}, which constitutes a very vague prior for many common datasets. Not used if \code{designmatrix} is \code{NA}.
 }
   \item{thinpara}{
    single number greater or equal to 1, coercible to integer. Every \code{thinpara}th parameter draw is kept and returned. The default value is 1, corresponding to no thinning of the parameter draws i.e. every draw is stored.
@@ -82,9 +88,10 @@ The value returned is a list object of class \code{svdraws} holding
 \item{para}{\code{mcmc} object containing the \emph{parameter} draws from the posterior distribution.}
 \item{latent}{\code{mcmc} object containing the \emph{latent instantaneous log-volatility} draws from the posterior distribution.}
 \item{latent0}{\code{mcmc} object containing the \emph{latent initial log-volatility} draws from the posterior distribution.}
+\item{beta}{\code{mcmc} object containing the \emph{regression coefficient} draws from the posterior distribution.}
 \item{y}{the argument \code{y}}
 \item{runtime}{\code{proc_time} object containing the run time of the sampler.}
-\item{priors}{\code{list} containing the parameter values of the prior distribution, i.e. the arguments \code{priormu}, \code{priorphi} and \code{priorsigma}.}
+\item{priors}{\code{list} containing the parameter values of the prior distribution, i.e. the arguments \code{priormu}, \code{priorphi}, \code{priorsigma}, and potentially \code{priornu} and \code{priorbeta}.}
 \item{thinning}{\code{list} containing the thinning parameters, i.e. the arguments \code{thinpara}, \code{thinlatent} and \code{thintime}.}
 \item{summary}{\code{list} containing a collection of summary statistics of the posterior draws for \code{para}, \code{latent}, and \code{latent0}.}
 
@@ -97,7 +104,7 @@ Kastner, G. and Frühwirth-Schnatter, S. (2014). Ancillarity-sufficiency interwe
 Gregor Kastner \email{gregor.kastner@wu.ac.at}
 }
 \note{
- If \code{y} contains zeros, you might want to consider de-meaning your returns.
+ If \code{y} contains zeros, you might want to consider de-meaning your returns or use \code{designmatrix = "ar0"}.
 }
 
 \seealso{
@@ -114,6 +121,34 @@ draws <- svsample(sim$y, draws = 5000, burnin = 100,
 ## Check out the results
 summary(draws)
 plot(draws)
+
+
+## Another example, this time with an AR(1) structure for the mean
+\dontrun{
+data(exrates)
+y <- exrates$USD
+
+## Fit AR(1)-SV model to EUR-USD exchange rates
+res <- svsample(y, designmatrix = "ar1")
+
+## Use predict.svdraws to obtain predictive volatilities
+ahead <- 100
+predvol <- predict(res, steps = ahead)
+
+## Use arpredict to obtain draws from the posterior predictive
+preddraws <- arpredict(res, predvol)
+
+## Calculate predictive quantiles
+predquants <- apply(preddraws, 2, quantile, c(.1, .5, .9))
+
+## Visualize
+ts.plot(y, xlim = c(length(y) - ahead, length(y) + ahead),
+	ylim = range(predquants))
+for (i in 1:3) {
+ lines((length(y) + 1):(length(y) + ahead), predquants[i,],
+       col = 3, lty = i %% 2 + 1)
+}
+}
 }
 
 % Add one or more standard keywords, see file 'KEYWORDS' in the

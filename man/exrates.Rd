@@ -23,9 +23,9 @@ ECB Statistical Data Warehouse (\url{http://sdw.ecb.europa.eu})
 \examples{
 \dontrun{
 data(exrates)
-dat <- logret(exrates$USD, demean=TRUE)  ## de-meaned log-returns
-res <- svsample(dat)                ## run MCMC sampler
-plot(res, forecast=100)             ## display results
+dat <- logret(exrates$USD, demean = TRUE)  ## de-meaned log-returns
+res <- svsample(dat)                       ## run MCMC sampler
+plot(res, forecast = 100)                  ## display results
 }
 }
 \keyword{datasets}

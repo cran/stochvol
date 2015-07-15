@@ -14,7 +14,6 @@ svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100),
 	  thinpara = 1, thinlatent = 1, thintime = 1,
 	  quiet = TRUE, startpara, startlatent)
 }
-%- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{y}{
    numeric vector containing the data (usually log-returns), which must not contain zeroes.

@@ -3,7 +3,7 @@
 
 // Main sampling steps and helper functions
 
-#include <Rcpp.h>
+#include <RcppArmadillo.h>
 #define COMPILING_STOCHVOL
 #include <update.h>  // this header declares update
                      // (which is also available to other packages)
@@ -18,7 +18,8 @@ RcppExport SEXP sampler(const SEXP, const SEXP, const SEXP,
   const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
   const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
   const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
-  const SEXP, const SEXP, const SEXP, const SEXP, const SEXP);
+  const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
+  const SEXP, const SEXP);
 
 // Step (b): sample mu, phi, sigma - __CENTERED__ version:
 Rcpp::NumericVector regressionCentered(

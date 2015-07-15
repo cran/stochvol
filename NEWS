@@ -1,3 +1,16 @@
+Changes in Version 1.2.0:
+  - Allows for incorporation of a simple mean (regression-type) model.
+    For details, please see ?svsample and ?arpredict. And, hopefully
+    soon, the corresponding vignette.
+  - Improved input-checking (somewhat).
+  - Argument 'thintime' in svsample may now also be 'firstlast',
+    meaning that latent volatility draws are only kept for the first
+    and the last point in time.
+
+Changes in Version 1.1.4:
+  - Included non-base default packages that are imported in NAMESPACE
+    into DESCRIPTION. Thanks to Kurt Hornik for pointing this out.
+
 Changes in Version 1.1.3:
   - Fixed a typo in Makefile for building vignettes.
 

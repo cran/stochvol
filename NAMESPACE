@@ -24,7 +24,8 @@ export(
  "plot.svdraws",
  "svsample2",
  ".svsample", # replaced by svsample2, to be faded out
- "logret"
+ "logret",
+ "arpredict"
 )
 
 S3method("print", "svsim")

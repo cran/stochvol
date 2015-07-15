@@ -16,7 +16,7 @@
       of dlogdnu (defined in densities.h)
 */
 
-#include <Rcpp.h>
+#include <RcppArmadillo.h>
 #include "densities.h"
 
 // a)
@@ -27,7 +27,8 @@ Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
 		   const Rcpp::NumericMatrix & hstore,
 		   const Rcpp::NumericVector & h0store,
 		   const Rcpp::NumericVector & nustore,
-		   const Rcpp::NumericMatrix & taustore);
+		   const Rcpp::NumericMatrix & taustore,
+		   const Rcpp::NumericMatrix & betastore);
 
 // sets up the progress bar
 int progressbar_init(int N);

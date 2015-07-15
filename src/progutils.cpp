@@ -23,7 +23,8 @@ Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
 		   const Rcpp::NumericMatrix & hstore,
 		   const Rcpp::NumericVector & h0store,
 		   const Rcpp::NumericVector & nustore,
-		   const Rcpp::NumericMatrix & taustore) {
+		   const Rcpp::NumericMatrix & taustore,
+		   const Rcpp::NumericMatrix & betastore) {
  int paracols;
  if (nustore.size() > 0) paracols = 4; else paracols = 3;
  
@@ -40,7 +41,8 @@ Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
  Rcpp::List val = Rcpp::List::create(
    Rcpp::_["para"] = res,
    Rcpp::_["latent"] = hstore,
-   Rcpp::_["latent0"] = h0store);
+   Rcpp::_["latent0"] = h0store,
+   Rcpp::_["beta"] = betastore);
 //   Rcpp::_["tau"] = taustore);
 
  return val;
