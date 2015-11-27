@@ -16,7 +16,8 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   const SEXP bmu_in, const SEXP Bmu_in,
   const SEXP a0_in, const SEXP b0_in, const SEXP Bsigma_in,
   const SEXP thin_in, const SEXP timethin_in, const SEXP startpara_in,
-  const SEXP startvol_in, const SEXP quiet_in, const SEXP para_in,
+  const SEXP startvol_in, const SEXP keeptau_in,
+  const SEXP quiet_in, const SEXP para_in,
   const SEXP MHsteps_in, const SEXP B011_in, const SEXP B022_in,
   const SEXP mhcontrol_in, const SEXP gammaprior_in,
   const SEXP truncnormal_in, const SEXP offset_in,
@@ -65,6 +66,8 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  int timethin = as<int>(timethin_in);
  int thin     = as<int>(thin_in);
 
+ bool keeptau = as<bool>(keeptau_in);
+ 
  // verbosity control
  bool verbose = !as<bool>(quiet_in);
 
@@ -145,8 +148,7 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  NumericVector tau(T, 1.);
 
  NumericVector nustore(terr * (N+1), nu);
- // NumericMatrix taustore(hstorelength, draws/thin);
- NumericMatrix taustore(0,0);
+ NumericMatrix taustore(hstorelength * keeptau, draws/thin);
 
  // some stuff for the regression part
  NumericVector curbeta(p, .012345);
@@ -212,10 +214,12 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   }
   
   // storage:
-  if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store
+  if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store h
    store_h(&h(0), &hstore(0, (i-burnin)/thin), timethin, hstorelength,
-           &tau(0), &taustore(0, (i-burnin)/thin), 
            h0, &h0store((i-burnin)/thin), curpara, centered_baseline);
+   if (keeptau && terr) {
+    store_tau(&tau(0), &taustore(0, (i-burnin)/thin), timethin, hstorelength);
+   }
   }
   mu[i+1] = curpara[0];
   phi[i+1] = curpara[1];
@@ -227,8 +231,11 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  if (verbose) progressbar_finish(N);  // finalize progress bar
 
  // Prepare return value and return
+ PutRNGstate();
  return cleanUp(mu, phi, sqrt(1/sigma2inv), hstore, h0store, nustore, taustore, betastore);
 }
+
+
 
 // update_terr performs an update of latent tau and df parameter nu
 void update_terr(const NumericVector &data, 
@@ -283,9 +290,9 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   NumericVector covector(T);  // holds covector (see McCausland et al. 2011)
   NumericVector htmp(T);  // intermediate vector for sampling h
   
-  double mu = curpara[0];
-  double phi = curpara[1];
-  double sigma2inv = pow(curpara[2], -2);
+  const double mu = curpara[0];
+  const double phi = curpara[1];
+  const double sigma2inv = pow(curpara[2], -2);
   
   /*
    * Step (c): sample indicators
@@ -690,6 +697,5 @@ Rcpp::NumericVector regressionNoncentered(
  if (Rcpp::as<double>(Rcpp::runif(1)) < expR) phi = phi_prop;
 
  Rcpp::NumericVector ret = Rcpp::NumericVector::create(mu, phi, fabs(sigma));
- PutRNGstate();
  return ret;
 }

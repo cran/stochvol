@@ -8,10 +8,10 @@ Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility (SV) Mode
 \code{svsample} simulates from the joint posterior distribution of the SV parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu}), along with the latent log-volatilities \code{h_0,...,h_n} and returns the MCMC draws. If a design matrix is provided, simple Bayesian regression can also be conducted.
 }
 \usage{
-svsample(y, draws = 10000, burnin = 1000, designmatrix = NA,
-	 priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
-	 priornu = NA, priorbeta = c(0, 10000), thinpara = 1, thinlatent = 1,
-	 thintime = 1, quiet = FALSE, startpara, startlatent, expert, ...)
+svsample(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu = c(0, 100),
+	 priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, priorbeta = c(0, 10000),
+	 thinpara = 1, thinlatent = 1, thintime = 1, keeptau = FALSE, quiet = FALSE,
+	 startpara, startlatent, expert, ...)
 }
 \arguments{
   \item{y}{
@@ -46,9 +46,12 @@ svsample(y, draws = 10000, burnin = 1000, designmatrix = NA,
 }
   \item{thinlatent}{
    single number greater or equal to 1, coercible to integer. Every \code{thinlatent}th latent variable draw is kept and returned. The default value is 1, corresponding to no thinning of the latent variable draws, i.e. every draw is kept.
-  }
+}
   \item{thintime}{
    single number greater or equal to 1, coercible to integer. If \code{thintime} is different from 1, only every \code{thintime}th latent log-volatility is being monitored. If, e.g., \code{thintime = 3}, the latent log-volatilities \code{h_1,h_4,h_7,...} will be kept. The default value is 1, meaning that all latent variables \code{h_1,h_2,h_3,...} are stored.
+}
+  \item{keeptau}{
+   logical value indicating whether the 'variance inflation factors' should be stored (used for the sampler with conditional t innovations only). This may be useful to check at what point(s) in time the normal disturbance had to be 'upscaled' by a mixture factor and when the series behaved 'normally'.
 }
   \item{quiet}{
    logical value indicating whether the progress bar and other informative output during sampling should be omitted. The default value is \code{FALSE}, implying verbose output.
@@ -88,8 +91,9 @@ The value returned is a list object of class \code{svdraws} holding
 \item{para}{\code{mcmc} object containing the \emph{parameter} draws from the posterior distribution.}
 \item{latent}{\code{mcmc} object containing the \emph{latent instantaneous log-volatility} draws from the posterior distribution.}
 \item{latent0}{\code{mcmc} object containing the \emph{latent initial log-volatility} draws from the posterior distribution.}
-\item{beta}{\code{mcmc} object containing the \emph{regression coefficient} draws from the posterior distribution.}
-\item{y}{the argument \code{y}}
+\item{tau}{\code{mcmc} object containing the \emph{latent variance inflation factors} for the sampler with conditional t-innovations \emph{(optional)}.}
+\item{beta}{\code{mcmc} object containing the \emph{regression coefficient} draws from the posterior distribution \emph{(optional)}.}
+\item{y}{the argument \code{y}.}
 \item{runtime}{\code{proc_time} object containing the run time of the sampler.}
 \item{priors}{\code{list} containing the parameter values of the prior distribution, i.e. the arguments \code{priormu}, \code{priorphi}, \code{priorsigma}, and potentially \code{priornu} and \code{priorbeta}.}
 \item{thinning}{\code{list} containing the thinning parameters, i.e. the arguments \code{thinpara}, \code{thinlatent} and \code{thintime}.}

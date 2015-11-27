@@ -1,6 +1,6 @@
 # R wrapper function for the main MCMC loop
 
-svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, priorbeta = c(0, 10000), thinpara = 1, thinlatent = 1, thintime = 1, quiet = FALSE, startpara, startlatent, expert, ...) {
+svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, priorbeta = c(0, 10000), thinpara = 1, thinlatent = 1, thintime = 1, keeptau = FALSE, quiet = FALSE, startpara, startlatent, expert, ...) {
  
  # Some error checking for y
  if (is(y, "svsim")) {
@@ -240,6 +240,15 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
    stop("Argument 'startlatent' must be numeric and of the same length as the data 'y'.")
  }
 
+ if (length(keeptau) != 1 || !is.logical(keeptau)) {
+  stop("Argument 'keeptau' must be TRUE or FALSE.")
+ }
+
+ if (is.na(priornu) && keeptau) {
+  warning("Setting argument 'keeptau' to FALSE, as 'priornu' is NA.")
+  keeptau <- FALSE
+ }
+
  if (!quiet) {
   cat(paste("\nCalling ", parameterization, " MCMC sampler with ", draws+burnin, " iter. Series length is ", length(y), ".\n",sep=""), file=stderr())
   flush.console()
@@ -250,7 +259,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
   runtime <- system.time(res <-
   .Call("sampler", y, draws, burnin, designmatrix,
        	priormu[1], priormu[2]^2, priorphi[1], priorphi[2], priorsigma, 
-       	thinlatent, thintime, startpara, startlatent, myquiet, para,
+       	thinlatent, thintime, startpara, startlatent, keeptau, myquiet, para,
 	mhsteps, B011, B022, mhcontrol, gammaprior, truncnormal,
 	myoffset, FALSE, priornu, priorbeta, PACKAGE = "stochvol"))
 
@@ -269,6 +278,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
  res$y <- y
  res$para <- mcmc(res$para[seq(burnin+thinpara+1, burnin+draws+1, thinpara),,drop=FALSE], burnin+thinpara, burnin+draws, thinpara)
  res$latent <- mcmc(t(res$latent), burnin+thinlatent, burnin+draws, thinlatent)
+ attr(res$latent, "dimnames") <- list(NULL, paste('h_', seq(1, length(y), by=thintime), sep=''))
  res$latent0 <- mcmc(res$latent0, burnin+thinlatent, burnin+draws, thinlatent)
  if (!any(is.na(designmatrix))) {
   res$beta <- mcmc(res$beta[seq(burnin+thinpara+1, burnin+draws+1, thinpara),,drop=FALSE], burnin+thinpara, burnin+draws, thinpara)
@@ -288,7 +298,11 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
   res$priors <- c(res$priors, "beta" = list(priorbeta), "designmatrix" = list(designmatrix))
  }
  
- attr(res$latent, "dimnames") <- list(NULL, paste('h_', seq(1, length(y), by=thintime), sep=''))
+ if (keeptau) {
+  res$tau <- mcmc(t(res$tau), burnin+thinlatent, burnin+draws, thinlatent)
+  attr(res$tau, "dimnames") <- list(NULL, paste('tau_', seq(1, length(y), by=thintime), sep=''))
+ }
+
  res$runtime <- runtime
  res$thinning <- list(para = thinpara, latent = thinlatent, time = thintime)
  class(res) <- "svdraws"

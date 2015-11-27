@@ -42,8 +42,8 @@ Rcpp::List cleanUp(const Rcpp::NumericVector & mu,
    Rcpp::_["para"] = res,
    Rcpp::_["latent"] = hstore,
    Rcpp::_["latent0"] = h0store,
-   Rcpp::_["beta"] = betastore);
-//   Rcpp::_["tau"] = taustore);
+   Rcpp::_["beta"] = betastore,
+   Rcpp::_["tau"] = taustore);
 
  return val;
 }

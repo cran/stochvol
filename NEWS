@@ -1,3 +1,11 @@
+Changes in Version 1.2.1:
+  - Added option 'keeptau' to the store the "variance inflation factors"
+    used for the sampler with conditional t innovations. Thanks to Sergey Egiev
+    for pointing out that this may be useful to at what point(s) in time the
+    normal disturbance had to be "upscaled" by a mixture factor and when the
+    series behaved "normally".
+  - Fixed residuals.svdraws to cater for a potential 'designmatrix'.
+
 Changes in Version 1.2.0:
   - Allows for incorporation of a simple mean (regression-type) model.
     For details, please see ?svsample and ?arpredict. And, hopefully
@@ -181,8 +189,6 @@ Changes in Version 0.5-0
   - First CRAN release version.
 
 TODO: 
-  - Code some mean models in C/C++.
   - Code updatesummary in C (apply w/ quantiles is slow).
   - Make AWOL sampler available for fixed parameters. Thanks to Hedibert
     Lopes for pointing this out.
-  - Make use of S4 methods and defer validity checks.
