@@ -319,12 +319,13 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
 
 # This function does not check input nor converts the result to coda objects!
 
-svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, thinpara = 1, thinlatent = 1, thintime = 1, quiet = TRUE, startpara, startlatent) {
+svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, thinpara = 1, thinlatent = 1, thintime = 1, keeptau = FALSE, quiet = TRUE, startpara, startlatent) {
 
  res <- .Call("sampler", y, draws, burnin, matrix(NA), priormu[1], priormu[2]^2,
 	      priorphi[1], priorphi[2], priorsigma, thinlatent,
-	      thintime, startpara, startlatent, quiet, 3L, 2L, 10^8, 10^12,
-	      -1, TRUE, FALSE, 0, FALSE, priornu, c(NA, NA), PACKAGE = "stochvol")
+	      thintime, startpara, startlatent, keeptau, quiet, 3L, 2L, 10^8,
+	      10^12, -1, TRUE, FALSE, 0, FALSE, priornu, c(NA, NA),
+	      PACKAGE = "stochvol")
 
  res$para <- t(res$para[-1,,drop=FALSE])
  if (nrow(res$para) == 3) {

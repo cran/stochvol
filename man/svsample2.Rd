@@ -12,7 +12,7 @@ Minimal overhead version of \code{\link{svsample}}.
 svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100),
 	  priorphi = c(5, 1.5), priorsigma = 1, priornu = NA,
 	  thinpara = 1, thinlatent = 1, thintime = 1,
-	  quiet = TRUE, startpara, startlatent)
+	  keeptau = FALSE, quiet = TRUE, startpara, startlatent)
 }
 \arguments{
   \item{y}{
@@ -44,6 +44,9 @@ svsample2(y, draws = 1, burnin = 0, priormu = c(0, 100),
   }
   \item{thintime}{
    single number greater or equal to 1, coercible to integer. If \code{thintime} is different from 1, only every \code{thintime}th latent log-volatility is being monitored. If, e.g., \code{thintime = 3}, the latent log-volatilities \code{h_1,h_4,h_7,...} will be kept. The default value is 1, meaning that all latent variables \code{h_1,h_2,h_3,...} are stored.
+}
+  \item{keeptau}{
+   logical value indicating whether the 'variance inflation factors' should be stored (used for the sampler with conditional t innovations only). This may be useful to check at what point(s) in time the normal disturbance had to be 'upscaled' by a mixture factor and when the series behaved 'normally'.
 }
   \item{quiet}{
    logical value indicating whether the progress bar and other informative output during sampling should be omitted. The default value is \code{TRUE}, implying non-verbose output.
