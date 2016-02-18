@@ -70,12 +70,12 @@ It utilizes Markov chain Monte Carlo (MCMC) samplers to conduct inference by obt
   Institute for Statistics and Mathematics\\
   Department of Finance, Accounting and Statistics\\
   WU Vienna University of Economics and Business\\
-  Welthandelsplatz 1 / D4 / level 4\\
+  Welthandelsplatz 1, Building D4, Level 4\\
   1020 Vienna, Austria\\
-%  Telephone: +43/1/31336-5593\\
-%  Fax: +43/1/31336-90-5593\\
+  Telephone: +43/1/31336-5593\\
+  Fax: +43/1/31336-90-5593\\
   E-mail: \email{gregor.kastner@wu.ac.at}\\
-  URL: \url{http://www.wu.ac.at/statmath/en/faculty_staff/faculty/gkastner/}
+  URL: \url{http://statmath.wu.ac.at/~kastner/}
 }
 %% It is also possible to add a telephone and fax number
 %% before the e-mail in the following format:
@@ -98,7 +98,7 @@ options(prompt = 'R> ', continue = '+  ')
 @
 
 \section*{Preface}
-This vignette corresponds to a forthcoming article of the same name in the Journal of Statistical Software. At the time of this writing, the vignette and the published article coincide; nevertheless, this version might receive minor updates as time goes by. To cite, please use \cite{kas:dea}. Further information about citing \pkg{stochvol} can be obtained in \proglang{R} by installing the package, e.g., through \code{install.packages("stochvol")}, and calling \code{citation("stochvol")}.
+This vignette corresponds to an article of the same name which is published in the Journal of Statistical Software. At the time of this writing, the vignette and the published article coincide; nevertheless, the version at hand might receive minor updates as time goes by. To cite, please use \cite{kas:dea}. Further information about citing \pkg{stochvol} can be obtained in \proglang{R} by installing the package, e.g., through \code{install.packages("stochvol")}, and calling \code{citation("stochvol")}.
 
 \section{Introduction}
 Returns -- in particular financial returns -- are commonly analyzed by estimating and predicting potentially time-varying volatilities. This focus has a long history, dating back at least to \cite{mar:por} who investigates portfolio construction with optimal expected return-variance trade-off. In his article, he proposes rolling-window-type estimates for the instantaneous volatilities, but already then recognizes the potential for ``better methods, which take into account more information''.

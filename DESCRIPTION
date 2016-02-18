@@ -3,7 +3,7 @@ Package: stochvol
 Type: Package
 Title: Efficient Bayesian Inference for Stochastic Volatility (SV)
         Models
-Version: 1.2.2
+Version: 1.2.3
 Authors@R: person("Gregor", "Kastner", role = c("aut", "cre"), email = "gregor.kastner@wu.ac.at")
 Maintainer: Gregor Kastner <gregor.kastner@wu.ac.at>
 Description: Efficient algorithms for fully Bayesian estimation of stochastic volatility (SV) models via Markov chain Monte Carlo (MCMC) methods.
@@ -13,7 +13,7 @@ Imports: Rcpp (>= 0.11), methods, stats, graphics, utils
 Suggests: mvtnorm
 LinkingTo: Rcpp, RcppArmadillo (>= 0.4)
 NeedsCompilation: yes
-Packaged: 2016-01-01 15:16:12 UTC; dejot
+Packaged: 2016-02-18 06:46:57 UTC; dejot
 Author: Gregor Kastner [aut, cre]
 Repository: CRAN
-Date/Publication: 2016-01-01 22:14:22
+Date/Publication: 2016-02-18 08:56:13

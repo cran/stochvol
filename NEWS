@@ -1,3 +1,8 @@
+Changes in Version 1.2.3:
+  - Updated CITATION to cater for newly published article in the Journal of
+    Statistical Software 69(5), 1-30, doi: 10.18637/jss.v069.i05.
+  - The function logret can now handle xts objects. Thanks to Niko Hauzenberger     for pointing this out.
+
 Changes in Version 1.2.2:
   - Fixed bug in initialization of svsample2 that was introduced in 1.2.1.
     Thanks to John Kerpel for pointing this out.

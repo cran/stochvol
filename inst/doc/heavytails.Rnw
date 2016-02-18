@@ -30,8 +30,10 @@
   WU Vienna University of Economics and Business\\
   Welthandelsplatz 1, Building D4, Level 4\\
   1020 Vienna, Austria\\
+  Telephone: +43/1/31336-5593\\
+  Fax: +43/1/31336-90-5593\\
   E-mail: \email{gregor.kastner@wu.ac.at}\\
-  URL: \url{http://www.wu.ac.at/statmath/en/faculty_staff/faculty/gkastner/}
+  URL: \url{http://statmath.wu.ac.at/~kastner/}
 }
 
 \input{macros.tex}

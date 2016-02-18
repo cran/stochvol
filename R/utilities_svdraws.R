@@ -1,5 +1,6 @@
 logret <- function(x, demean = FALSE) {
  tmp <- diff(log(x))
+ if (is(tmp, "xts")) tmp <- tmp[-1]
  if (all(isTRUE(demean))) tmp <- tmp - mean(tmp)
  tmp
 }
@@ -123,11 +124,11 @@ residuals.svdraws <- function(object, type = "mean", ...) {
  if (object$thinning$time != 1) warning("Not every point in time has been stored ('thintime' was set to a value unequal to 1 during sampling), thus only some residuals have been extracted.")
   
  if (type == "mean") {
-  res <- rowMeans(object$y[seq(1, length(object$y), by=object$thinning$time)] / exp(t(object$latent)/2))
+  res <- rowMeans(as.numeric(object$y)[seq(1, length(object$y), by=object$thinning$time)] / exp(t(object$latent)/2))
  }
  
  if (type == "median") {
-  res <- apply(object$y[seq(1, length(object$y), by=object$thinning$time)] / exp(t(object$latent)/2), 1, median)
+  res <- apply(as.numeric(object$y)[seq(1, length(object$y), by=object$thinning$time)] / exp(t(object$latent)/2), 1, median)
  }
 
  names(res) <- sub("h", "r", colnames(object$latent))
