@@ -1,6 +1,6 @@
 # R wrapper function for the main MCMC loop
 
-svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, priorbeta = c(0, 10000), thinpara = 1, thinlatent = 1, thintime = 1, keeptau = FALSE, quiet = FALSE, startpara, startlatent, expert, ...) {
+svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, priorbeta = c(0, 10000), priorlatent0 = "stationary", thinpara = 1, thinlatent = 1, thintime = 1, keeptau = FALSE, quiet = FALSE, startpara, startlatent, expert, ...) {
  
  # Some error checking for y
  if (is(y, "svsim")) {
@@ -78,6 +78,11 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
 
  if (!is.numeric(priorbeta) || length(priorbeta) != 2) {
    stop("Argument 'priorbeta' (means and sds for the independent Gaussian priors for beta) must be numeric and of length 2.")
+ }
+
+ if (!is.numeric(priorlatent0) || length(priorlatent0) != 1 || priorlatent0 < 0) {
+   if (priorlatent0 == "stationary") priorlatent0 <- -1L else
+    stop("Argument 'priorlatent0' must be 'stationary' or a single non-negative number.")
  }
 
  # Some error checking for thinpara
@@ -261,7 +266,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
        	priormu[1], priormu[2]^2, priorphi[1], priorphi[2], priorsigma, 
        	thinlatent, thintime, startpara, startlatent, keeptau, myquiet, para,
 	mhsteps, B011, B022, mhcontrol, gammaprior, truncnormal,
-	myoffset, FALSE, priornu, priorbeta, PACKAGE = "stochvol"))
+	myoffset, FALSE, priornu, priorbeta, priorlatent0, PACKAGE = "stochvol"))
 
  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
   
@@ -319,12 +324,14 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
 
 # This function does not check input nor converts the result to coda objects!
 
-svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, thinpara = 1, thinlatent = 1, thintime = 1, keeptau = FALSE, quiet = TRUE, startpara, startlatent) {
+svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, priorlatent0 = "stationary", thinpara = 1, thinlatent = 1, thintime = 1, keeptau = FALSE, quiet = TRUE, startpara, startlatent) {
+
+ if (priorlatent0 == "stationary") priorlatent0 <- -1L
 
  res <- .Call("sampler", y, draws, burnin, matrix(NA), priormu[1], priormu[2]^2,
 	      priorphi[1], priorphi[2], priorsigma, thinlatent,
 	      thintime, startpara, startlatent, keeptau, quiet, 3L, 2L, 10^8,
-	      10^12, -1, TRUE, FALSE, 0, FALSE, priornu, c(NA, NA),
+	      10^12, -1, TRUE, FALSE, 0, FALSE, priornu, c(NA, NA), priorlatent0,
 	      PACKAGE = "stochvol")
 
  res$para <- t(res$para[-1,,drop=FALSE])

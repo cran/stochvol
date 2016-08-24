@@ -19,7 +19,7 @@ RcppExport SEXP sampler(const SEXP, const SEXP, const SEXP,
   const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
   const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
   const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
-  const SEXP, const SEXP, const SEXP);
+  const SEXP, const SEXP, const SEXP, const SEXP);
 
 // Step (b): sample mu, phi, sigma - __CENTERED__ version:
 Rcpp::NumericVector regressionCentered(
@@ -31,7 +31,7 @@ Rcpp::NumericVector regressionCentered(
        double B011inv, double B022inv,
        bool gammaprior, bool truncnormal,
        double MHcontrol, int MHsteps,
-       const bool dontupdatemu);
+       const bool dontupdatemu, const double priorlatent0);
 
 // Step (b): sample mu, phi, sigma - __NONCENTERED__ version:
 Rcpp::NumericVector regressionNoncentered(
@@ -42,6 +42,6 @@ Rcpp::NumericVector regressionNoncentered(
        double Bsigma, double a0, double b0,
        double bmu, double Bmu,
        bool truncnormal, int MHsteps,
-       const bool dontupdatemu);
+       const bool dontupdatemu, const double priorlatent0);
 
 #endif

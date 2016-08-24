@@ -53,7 +53,7 @@ ts.plot(y, xlim = c(length(y) - ahead, length(y) + ahead),
 	ylim = range(predquants))
 for (i in 1:3) {
  lines((length(y) + 1):(length(y) + ahead), predquants[i,],
-       col = 3, lty = i %% 2 + 1)
+       col = 3, lty = c(2, 1, 2)[i])
 }
 }}
 

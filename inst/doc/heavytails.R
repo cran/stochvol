@@ -19,18 +19,10 @@ plot(exrates$date[-1], dat, type = 'l', main = 'Demeaned log returns')
 
 
 ###################################################
-### code chunk number 3: normalerr
-###################################################
-res <- svsample(dat, priormu = c(-12, 1), priorphi = c(20, 1.1),
-  priorsigma = 0.1)
-plot(res, showobs = FALSE)
-
-
-###################################################
-### code chunk number 4: terr
+### code chunk number 3: terr
 ###################################################
 rest <- svsample(dat, priormu = c(-12, 1), priorphi = c(20, 1.1),
-  priorsigma = 0.1, priornu = c(2, 100))
+  priorsigma = 0.1, priornu = c(2, 100), burnin = 2000)
 plot(rest, showobs = FALSE)
 
 

@@ -10,7 +10,7 @@
 
 \interfootnotelinepenalty=10000
 
-\author{Gregor Kastner\\WU Vienna University of Economics and Business\\[1em]First version, May 15, 2015}
+\author{Gregor Kastner\\WU Vienna University of Economics and Business\\[1em]First version: May 15, 2015\\This version: Aug 24, 2016}
 \title{Heavy-Tailed Innovations in the \proglang{R} Package \pkg{stochvol}}
 
 %% for pretty printing and a nice hypersummary also set:
@@ -82,29 +82,31 @@ plot(exrates$date[-1], dat, type = 'l', main = 'Demeaned log returns')
 \end{center}
 \end{figure}
 
-First, we fit a standard SV model to the data. Then, by specifying the argument \code{priornu} (a two-element vector containing the lower and upper bounds of the uniform prior for $\nu$), we can trigger the sampler allowing for heavy-tailed conditional innovations. 
+%First, we fit a standard SV model to the data. Then
+By specifying the argument \code{priornu} (a two-element vector containing the lower and upper bounds of the uniform prior for $\nu$), we can trigger the sampler to allow for heavy-tailed conditional innovations. 
 
-<<normalerr, fig=TRUE, include=FALSE, width=10, height=6, echo=TRUE>>=
-res <- svsample(dat, priormu = c(-12, 1), priorphi = c(20, 1.1),
-  priorsigma = 0.1)
-plot(res, showobs = FALSE)
-@
+%<<normalerr, fig=TRUE, include=FALSE, width=10, height=6, echo=TRUE>>=
+%res <- svsample(dat, priormu = c(-12, 1), priorphi = c(20, 1.1),
+%  priorsigma = 0.1)
+%plot(res, showobs = FALSE)
+%@
 
-<<terr, fig=TRUE, include=FALSE, width=10, height=7, echo=TRUE>>=
+<<terr, fig=TRUE, include=FALSE, width=10, height=9, echo=TRUE>>=
 rest <- svsample(dat, priormu = c(-12, 1), priorphi = c(20, 1.1),
-  priorsigma = 0.1, priornu = c(2, 100))
+  priorsigma = 0.1, priornu = c(2, 100), burnin = 2000)
 plot(rest, showobs = FALSE)
 @
 
-Results are displayed in Figure \ref{fig:res}, where the top panel (rows 1 to 3) corresponds to the output from the standard SV model and the bottom panel (rows 4 to 7) contains the output from the SV-$t$ model. Row~4 depicts $\exp(h_t/2)$ for $t \in \{1,\dots,n\}$; row~5 shows the time varying standard deviations given through $\sqrt{\nu/(\nu-2)}\exp(h_t/2)$ for $t \in \{1,\dots,n\}$; row~6 portrays trace plots and row~7 outlines the corresponding smoothed kernel density estimates for the four parameters $\mu$, $\phi$, $\sigma$, and $\nu$. It is worth noting that $\nu$ is estimated to lie between $6$ and $18$ with high posterior probability, indicating evidence for the presence of heavy tails even after catering for stochastic volatility. The extra flexibility of the SV-$t$ sampler seems to allow for increased persistence $\phi$ and smaller variance of log-volatility $\sigma^2$, resulting in smoother time-varying volatility estimates.
+Results are displayed in Figure \ref{fig:res},
+%, where the top panel (rows 1 to 3) corresponds to the output from the standard SV model and the
+containing the output from the SV-$t$ model. Row~1 depicts $\exp(h_t/2)$ for $t \in \{1,\dots,n\}$; row~2 shows the time varying standard deviations given through $\sqrt{\nu/(\nu-2)}\exp(h_t/2)$ for $t \in \{1,\dots,n\}$; row~3 portrays trace plots and row~4 outlines the corresponding smoothed kernel density estimates for the four parameters $\mu$, $\phi$, $\sigma$, and $\nu$. It is worth noting that $\nu$ is estimated to lie between $6$ and $18$ with high posterior probability, indicating evidence for the presence of heavy tails even after catering for stochastic volatility. The extra flexibility of the SV-$t$ sampler seems to allow for increased persistence $\phi$ and smaller variance of log-volatility $\sigma^2$, resulting in smoother time-varying volatility estimates.
 
-\begin{figure}[p]
-\begin{center}
- \includegraphics[width=\textwidth]{heavytails-normalerr}
- \vspace{2em}
-
+\begin{figure}[ht]
+ \begin{center}
+% \includegraphics[width=\textwidth]{heavytails-normalerr}
+% \vspace{2em}
  \includegraphics[width=\textwidth]{heavytails-terr}
- \caption{Standard output of the \code{plot} method when applied to an \code{svdraws} object containing posterior draws from an SV model with Gaussian errors (top) and Student's $t$ errors (bottom).}
+ \caption{Standard output of the \code{plot} method when applied to an \code{svdraws} object containing posterior draws from an SV model with Student's $t$ errors.}
  \label{fig:res}
 \end{center}
 \end{figure}

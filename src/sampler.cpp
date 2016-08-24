@@ -22,7 +22,7 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   const SEXP mhcontrol_in, const SEXP gammaprior_in,
   const SEXP truncnormal_in, const SEXP offset_in,
   const SEXP dontupdatemu_in, const SEXP priordf_in,
-  const SEXP priorbeta_in) {
+  const SEXP priorbeta_in, const SEXP priorlatent0_in) {
 
  //RNGScope scope;       // just in case no seed has been set at R level
  GetRNGstate(); // "by hand" because RNGScope isn't safe if return
@@ -49,6 +49,8 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
  priorbetaprec.diag() += 1./(priorbeta(1)*priorbeta(1));
  
  List startpara(startpara_in);
+
+ double priorlatent0 = as<double>(priorlatent0_in);
 
  // number of MCMC draws
  int burnin = as<int>(burnin_in);
@@ -189,7 +191,7 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
   // and parameters ONCE
   update(datastand, &curpara(0), &h(0), h0, &mixprob(0,0), &r(0), centered_baseline, C0, cT,
          Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv, Gammaprior,
-	 truncnormal, MHcontrol, MHsteps, parameterization, dontupdatemu);
+	 truncnormal, MHcontrol, MHsteps, parameterization, dontupdatemu, priorlatent0);
 
   if (regression) { // update betas (regression)
    normalizer = exp(-h/2);
@@ -274,7 +276,7 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
 	    const double bmu, const double Bmu, const double B011inv,
 	    const double B022inv, const bool Gammaprior, const bool truncnormal,
 	    const double MHcontrol, const int MHsteps, const int parameterization,
-	    const bool dontupdatemu) {
+	    const bool dontupdatemu, const double priorlatent0) {
    
   int T = data.length();
 
@@ -284,11 +286,15 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   NumericVector curpara(3);  // curpara needs to be NumericVector in current implementation
   for (int j = 0; j < 3; j++) curpara(j) = curpara_in[j];  // maybe revisit to avoid copying
   
+  if (dontupdatemu) curpara(0) = 0; // just to be sure
+
   NumericVector omega_diag(T);  // contains diagonal elements of precision matrix
   double omega_offdiag;  // contains off-diag element of precision matrix (const)
   NumericVector chol_offdiag(T-1), chol_diag(T);  // Cholesky-factor of Omega
   NumericVector covector(T);  // holds covector (see McCausland et al. 2011)
   NumericVector htmp(T);  // intermediate vector for sampling h
+
+  double mytmpl;
   
   const double mu = curpara[0];
   const double phi = curpara[1];
@@ -351,9 +357,22 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   backwardAlg(chol_diag, chol_offdiag, htmp, &h(0));
 
   // sample h0 | h1, phi, mu, sigma
-  if (centered_baseline) h0 = as<double>(rnorm(1, mu + phi*(h[0]-mu),
-                                         curpara[2]));
-  else h0 = as<double>(rnorm(1, phi*h[0], 1)); 
+
+  if (centered_baseline) {
+   if (priorlatent0 < 0.) {
+    h0 = as<double>(rnorm(1, mu + phi*(h[0]-mu), curpara[2]));
+   } else {
+    mytmpl = priorlatent0 / (1. + priorlatent0*phi*phi);
+    h0 = as<double>(rnorm(1, mu + mytmpl*phi*(h[0]-mu), sqrt(mytmpl)*curpara[2]));
+   }
+  } else {
+   if (priorlatent0 < 0.) {
+    h0 = as<double>(rnorm(1, phi*h[0], 1));
+   } else {
+    mytmpl = priorlatent0 / (1. + priorlatent0*phi*phi);
+    h0 = as<double>(rnorm(1, mytmpl*phi*h[0], sqrt(mytmpl)));
+   }
+  }
   
   /*
    * Step (b): sample mu, phi, sigma
@@ -362,7 +381,7 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   if (centered_baseline) {  // this means we have C as base
    curpara = regressionCentered(h0, h, mu, phi, curpara[2],
      C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv,
-     B022inv, Gammaprior, truncnormal, MHcontrol, MHsteps, dontupdatemu);
+     B022inv, Gammaprior, truncnormal, MHcontrol, MHsteps, dontupdatemu, priorlatent0);
 
    if (parameterization == 3) {  // this means we should interweave
     double h0_alter;
@@ -370,7 +389,7 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
     h0_alter = (h0-curpara[0])/curpara[2];
     curpara = regressionNoncentered(data, h0_alter, htmp, r,
       curpara[0], curpara[1], curpara[2], Bsigma, a0, b0, bmu, Bmu,
-      truncnormal, MHsteps, dontupdatemu);
+      truncnormal, MHsteps, dontupdatemu, priorlatent0);
     h = curpara[0] + curpara[2]*htmp;
     h0 = curpara[0] + curpara[2]*h0_alter;
    }
@@ -379,7 +398,8 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   } else {  // NC as base
   
    curpara = regressionNoncentered(data, h0, h, r, mu, phi, curpara[2],
-                                   Bsigma, a0, b0, bmu, Bmu, truncnormal, MHsteps, dontupdatemu);
+                                   Bsigma, a0, b0, bmu, Bmu, truncnormal, MHsteps,
+				   dontupdatemu, priorlatent0);
 
    if (parameterization == 4) {  // this means we should interweave
     double h0_alter;
@@ -387,7 +407,8 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
     h0_alter = curpara[0] + curpara[2]*h0;
     curpara = regressionCentered(h0_alter, htmp, curpara[0], curpara[1], curpara[2],
                                  C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv,
-				 Gammaprior, truncnormal, MHcontrol, MHsteps, dontupdatemu);
+				 Gammaprior, truncnormal, MHcontrol, MHsteps,
+				 dontupdatemu, priorlatent0);
     h = (htmp-curpara[0])/curpara[2];
     h0 = (h0_alter-curpara[0])/curpara[2];
    }
@@ -407,7 +428,8 @@ Rcpp::NumericVector regressionCentered(
        double bmu, double Bmu,
        double B011inv, double B022inv,
        bool Gammaprior, bool truncnormal, double MHcontrol, int MHsteps,
-       const bool dontupdatemu) {
+       const bool dontupdatemu, const double priorlatent0) {
+ if (dontupdatemu) mu = 0;
  
  int T = h.length();
  double z, CT, sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, tmp1,
@@ -488,8 +510,11 @@ Rcpp::NumericVector regressionCentered(
   double bT = (sum3-gamma*sum1)/(sum4+B011inv);
   phi_prop = as<double>(Rcpp::rnorm(1, bT, BTsqrt));
   
-  R = logdnorm(h0, mu, sigma/sqrt(1-phi_prop*phi_prop));
-  R -= logdnorm(h0, mu, sigma/sqrt(1-phi*phi));
+  R = 0;
+  if (priorlatent0 < 0.) { // needed only if prior of h0 depends on phi
+   R += logdnorm(h0, mu, sigma/sqrt(1-phi_prop*phi_prop));
+   R -= logdnorm(h0, mu, sigma/sqrt(1-phi*phi));
+  } 
   R += logdbeta((phi_prop+1)/2, a0, b0);
   R -= logdbeta((phi+1)/2, a0, b0);
   R += logdnorm(phi, 0, sigma/sqrt(B011inv));
@@ -506,8 +531,13 @@ Rcpp::NumericVector regressionCentered(
    bT = (sum2-phi*sum1)/(T+B022inv);
    gamma_prop = as<double>(Rcpp::rnorm(1, bT, BTsqrt));
   
-   R = logdnorm(h0, gamma_prop/(1-phi), sigma/sqrt(1-phi*phi));
-   R -= logdnorm(h0, gamma/(1-phi), sigma/sqrt(1-phi*phi));
+   if (priorlatent0 < 0.) {
+    R = logdnorm(h0, gamma_prop/(1-phi), sigma/sqrt(1-phi*phi));
+    R -= logdnorm(h0, gamma/(1-phi), sigma/sqrt(1-phi*phi));
+   } else {
+    R = logdnorm(h0, gamma_prop/(1-phi), sqrt(priorlatent0)*sigma);
+    R -= logdnorm(h0, gamma/(1-phi), sqrt(priorlatent0)*sigma);
+   }
    R += logdnorm(gamma_prop, bmu*(1-phi), sqrt(Bmu)*(1-phi));
    R -= logdnorm(gamma, bmu*(1-phi), sqrt(Bmu)*(1-phi));
    R += logdnorm(gamma, 0, sigma/sqrt(B022inv));
@@ -547,16 +577,21 @@ Rcpp::NumericVector regressionCentered(
   tmpR = 1-phi_prop;  // some temps used for acceptance probability
   tmpR2 = 1-phi;
  
+  R = 0.;  // initialize R
   if (MHsteps == 2) {
    sigma_prop = sigma;  // sigma was accepted/rejected independently
-   R = 0.;  // initialize R
   } else if (MHsteps == 1) {
    sigma_prop = sqrt(sigma2_prop);  // accept sigma jointly with "betas"
    R = logacceptrateGamma(sigma2_prop, sigma*sigma, Bsigma);  // initialize R
   }
  
-  R += logdnorm(h0, gamma_prop/tmpR, sigma_prop/sqrt(1-phi_prop*phi_prop));
-  R -= logdnorm(h0, mu, sigma/sqrt(1-phi*phi));
+  if (priorlatent0 < 0.) {
+   R += logdnorm(h0, gamma_prop/tmpR, sigma_prop/sqrt(1-phi_prop*phi_prop));
+   R -= logdnorm(h0, mu, sigma/sqrt(1-phi*phi));
+  } else {
+   R += logdnorm(h0, gamma_prop/tmpR, sqrt(priorlatent0)*sigma_prop);
+   R -= logdnorm(h0, mu, sqrt(priorlatent0)*sigma);
+  }
   R += logdnorm(gamma_prop, bmu*tmpR, sqrt(Bmu)*tmpR);
   R -= logdnorm(mu*tmpR2, bmu*tmpR2, sqrt(Bmu)*tmpR2);
   R += logdbeta((phi_prop+1)/2, a0, b0);
@@ -587,7 +622,8 @@ Rcpp::NumericVector regressionNoncentered(
        double Bsigma, double a0, double b0,
        double bmu, double Bmu,
        bool truncnormal, int MHsteps,
-       const bool dontupdatemu) {
+       const bool dontupdatemu, const double priorlatent0) {
+ if (dontupdatemu) mu = 0;
  
  int T = h.length();
  double sumtmp1, sumtmp2, expR, phi_prop, BT11, BT12, BT22, bT1, bT2, tmp1,
@@ -688,8 +724,13 @@ Rcpp::NumericVector regressionNoncentered(
  }
  
  // now for the MH step, acceptance prob expR
- expR  = exp(logdnorm(h0, 0, 1/sqrt(1-phi_prop*phi_prop))
-         - logdnorm(h0, 0, 1/sqrt(1-phi*phi)));
+ if (priorlatent0 < .0) {
+  expR  = exp(logdnorm(h0, 0, 1/sqrt(1-phi_prop*phi_prop))
+            - logdnorm(h0, 0, 1/sqrt(1-phi*phi)));
+ } else {
+  expR  = exp(logdnorm(h0, 0, sqrt(priorlatent0))
+            - logdnorm(h0, 0, sqrt(priorlatent0)));
+ }
  expR *= propBeta((phi_prop+1)/2, (phi+1)/2, a0, b0);
  // ^^note that factor 1/2 from transformation of densities cancels
 

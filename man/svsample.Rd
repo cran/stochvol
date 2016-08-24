@@ -10,8 +10,8 @@ Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility (SV) Mode
 \usage{
 svsample(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu = c(0, 100),
 	 priorphi = c(5, 1.5), priorsigma = 1, priornu = NA, priorbeta = c(0, 10000),
-	 thinpara = 1, thinlatent = 1, thintime = 1, keeptau = FALSE, quiet = FALSE,
-	 startpara, startlatent, expert, ...)
+	 priorlatent0 = "stationary", thinpara = 1, thinlatent = 1, thintime = 1,
+	 keeptau = FALSE, quiet = FALSE, startpara, startlatent, expert, ...)
 }
 \arguments{
   \item{y}{
@@ -41,6 +41,9 @@ svsample(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu = c(0, 100)
   \item{priorbeta}{
    numeric vector of length 2, indicating the mean and standard deviation of the Gaussian prior for the regression parameters. The default value is \code{c(0, 10000)}, which constitutes a very vague prior for many common datasets. Not used if \code{designmatrix} is \code{NA}.
 }
+  \item{priorlatent0}{
+   either a single non-negative number or the string \code{'stationary'} (the default, also the behavior before version 1.3.0). When \code{priorlatent0} is equal to \code{'stationary'}, the stationary distribution of the latent AR(1)-process is used as the prior for the initial log-volatility \code{h_0}. When \code{priorlatent0} is equal to a number \eqn{B}, we have \eqn{h_0 \sim N(\mu, B\sigma^2)} a priori.
+}
   \item{thinpara}{
    single number greater or equal to 1, coercible to integer. Every \code{thinpara}th parameter draw is kept and returned. The default value is 1, corresponding to no thinning of the parameter draws i.e. every draw is stored.
 }
@@ -57,7 +60,7 @@ svsample(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu = c(0, 100)
    logical value indicating whether the progress bar and other informative output during sampling should be omitted. The default value is \code{FALSE}, implying verbose output.
 }
   \item{startpara}{
-   \emph{optional} named list, containing the starting values for the parameter draws. If supplied, \code{startpara} must contain three elements named \code{mu}, \code{phi}, and \code{sigma}, where \code{mu} is an arbitrary numerical value, \code{phi} is a real number between \code{-1} and \code{1}, and \code{sigma} is a positive real number. The default value is \code{list(mu = -10, phi = 0.9, sigma = 0.3)}.
+   \emph{optional} named list, containing the starting values for the parameter draws. If supplied, \code{startpara} must contain three elements named \code{mu}, \code{phi}, and \code{sigma}, where \code{mu} is an arbitrary numerical value, \code{phi} is a real number between \code{-1} and \code{1}, and \code{sigma} is a positive real number. The default value is \code{list(mu = -10, phi = 0.9, sigma = 0.3)}. Moreover, if \code{priornu} is not \code{NA}, \code{startpara} must also contain an element named \code{nu} (the degrees of freedom parameter for the t-innovations).
 }
   \item{startlatent}{
    \emph{optional} vector of length \code{length(x$y)}, containing the starting values for the latent log-volatility draws. The default value is \code{rep(-10, length(x$y))}.
