@@ -1,5 +1,17 @@
+Changes in Version 1.3.1:
+  - Parameter starting values are now set to their respective prior means
+    (if not specified by the user).
+  - Sampling h[-0] is now done conditionally on h0. This change should not
+    make a difference for the standard use cases of stochvol but is necessary
+    to yield correct results for the new prior for h0 which was introduced in
+    version 1.3.0.
+  - Turned on progress indicator also for Windows (need %% instead of \045
+    or \% to escape a percent symbol in Rprintf).
+
 Changes in Version 1.3.0:
-  - Implemented new prior for initial log-volatility h0.
+  - Implemented new prior for initial log-volatility h0. Can be used to
+    stabilize the level of the volatilities, especially when stochvol
+    is used within the context of a more general MCMC algorithm.
   - Shortened the heavytails-vignette (a bit) to stay below the 5MB mark.
   - Fixed error in help files of svsample and svsample2 concerning startpara.
     Thanks to Dominic Cervicek for pointing this out.

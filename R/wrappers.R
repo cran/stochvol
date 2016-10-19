@@ -207,9 +207,14 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
  # Some input checking for startpara
  if (missing(startpara)) {
   if (any(is.na(priornu))) {
-   startpara <- list(mu = -10, phi = .9, sigma = .3)
+   startpara <- list(mu = priormu[1],
+		     phi = 2 * (priorphi[1] / sum(priorphi)) - 1,
+		     sigma = priorsigma)
   } else {
-   startpara <- list(mu = -10, phi = .9, sigma = .3, nu = mean(priornu))
+   startpara <- list(mu = priormu[1],
+		     phi = 2 * (priorphi[1] / sum(priorphi)) - 1,
+		     sigma = priorsigma,
+		     nu = mean(priornu))
   }
  } else {
   if (!is.list(startpara))
@@ -259,7 +264,8 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
   flush.console()
  }
 
- if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet  # Hack to prevent console flushing problems with Windows
+ #if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet  # Hack to prevent console flushing problems with Windows
+ myquiet <- quiet
 
   runtime <- system.time(res <-
   .Call("sampler", y, draws, burnin, designmatrix,

@@ -168,7 +168,7 @@ RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
 
  // initializes the progress bar
  // "show" holds the number of iterations per progress sign
- int show;
+ int show = 0;
  if (verbose) show = progressbar_init(N);
  
  for (int i = 0; i < N; i++) {  // BEGIN main MCMC loop
@@ -317,10 +317,22 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
    */
  
   if (centered_baseline) { // fill precision matrix omega and covector c for CENTERED para:
-   omega_diag[0] = mix_varinv[r[0]] + sigma2inv;
-   covector[0] = (data[0] - mix_mean[r[0]])*mix_varinv[r[0]]
-               + mu*(1-phi)*sigma2inv;
-   for (int j = 1; j < (T-1); j++) {
+
+/*
+ * OLD CODE in version 1.3.1 and earlier (not conditionally on h0)
+ *
+ * omega_diag[0] = mix_varinv[r[0]] + sigma2inv;
+ *  covector[0] = (data[0] - mix_mean[r[0]])*mix_varinv[r[0]]
+ *             + mu*(1-phi)*sigma2inv;
+ */
+
+// NEW CODE as of version 1.4.0 (conditionally on h0)
+  omega_diag[0] = mix_varinv[r[0]] + (1+phi*phi)*sigma2inv;
+  covector[0] = (data[0] - mix_mean[r[0]])*mix_varinv[r[0]]
+              + (mu + phi*h0 - 2.*phi*mu + phi*phi*mu) * sigma2inv;
+// END NEW CODE
+
+  for (int j = 1; j < (T-1); j++) {
     omega_diag[j] = mix_varinv[r[j]] + (1+phi*phi)*sigma2inv; 
     covector[j] = (data[j] - mix_mean[r[j]])*mix_varinv[r[j]]
                 + mu*pow((1-phi),2)*sigma2inv;
@@ -333,9 +345,21 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   } else { // fill precision matrix omega and covector c for NONCENTERED para:
 
    const double sigmainvtmp = sqrt(sigma2inv);
-   const double phi2tmp = phi*phi; 
-   omega_diag[0] = mix_varinv[r[0]]/sigma2inv + 1;
-   covector[0] = mix_varinv[r[0]]/sigmainvtmp*(data[0] - mix_mean[r[0]] - mu);
+   const double phi2tmp = phi*phi;
+
+/*
+ * OLD CODE in version 1.3.1 and earlier (not conditionally on h0)
+ *
+ * omega_diag[0] = mix_varinv[r[0]]/sigma2inv + 1;
+ * covector[0] = mix_varinv[r[0]]/sigmainvtmp*(data[0] - mix_mean[r[0]] - mu);
+ *
+ */
+
+// NEW CODE as of version 1.4.0 (conditionally on h0)
+   omega_diag[0] = mix_varinv[r[0]]/sigma2inv + 1 + phi2tmp;
+   covector[0] = mix_varinv[r[0]]/sigmainvtmp*(data[0] - mix_mean[r[0]] - mu) + phi*h0;
+// END NEW CODE
+
    for (int j = 1; j < (T-1); j++) {
     omega_diag[j] = mix_varinv[r[j]]/sigma2inv + 1 + phi2tmp; 
     covector[j] = mix_varinv[r[j]]/sigmainvtmp*(data[j] - mix_mean[r[j]] - mu);

@@ -60,17 +60,16 @@ int progressbar_init(int N) {
   for (int i = 0; i < (N-1)/50+1; i++) REprintf(" ");
   show = 50;
  }
- REprintf("] 100%");
- REprintf("\r  0% [");
-// R_FlushConsole();
+ REprintf("] 100%%\r  0%% [");
+ R_FlushConsole();
  return show;
 }
 
 // finalizes progress bar
 void progressbar_finish(int N) {
  if (!(N % 50) && N >= 2500) REprintf("+");
- REprintf("] 100%\n\n");
-// R_FlushConsole();
+ REprintf("] 100%%\n\n");
+ R_FlushConsole();
 }
 
 // b)

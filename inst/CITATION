@@ -31,13 +31,13 @@ citEntry(header = "To refer to the current version of the package you could use:
          author = personList(as.person("Gregor Kastner")),                              
          year = year,
          note = note,
-         url = "http://cran.r-project.org/package=stochvol",
+         url = "https://CRAN.R-project.org/package=stochvol",
          textVersion =
          paste("Gregor Kastner",
    	       sprintf("(%s).", year),	 
                "stochvol: Efficient Bayesian inference for stochastic volatility (SV) models.",
 	       paste(note, ".", sep = ""),
-               "URL: http://cran.r-project.org/package=stochvol")
+               "URL: https://CRAN.R-project.org/package=stochvol")
 )
 
 citEntry(header = "To refer to the sampling methodology used in stochvol please cite:",
@@ -60,8 +60,8 @@ citEntry(header = "If you want to specifically refer to the conditional Student'
          type = "R Package Vignette",
          institution = "CRAN",
          year = "2015",
-         url = "http://cran.r-project.org/web/packages/stochvol/vignettes/heavytails.pdf",
-         textVersion = "Gregor Kastner (2015). Heavy-Tailed Innovations in the R Package stochvol. R Package Vignette. URL: http://cran.r-project.org/web/packages/stochvol/vignettes/heavytails.pdf"
+         url = "https://CRAN.R-project.org/package=stochvol/vignettes/heavytails.pdf",
+         textVersion = "Gregor Kastner (2015). Heavy-Tailed Innovations in the R Package stochvol. R Package Vignette. URL: https://CRAN.R-project.org/package=stochvol/vignettes/heavytails.pdf"
 )
 
 citFooter("BibTeX entries of the above can be obtained by", sQuote('toBibtex(citation("stochvol"))'))
