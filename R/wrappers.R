@@ -264,8 +264,8 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA, priormu
   flush.console()
  }
 
- #if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet  # Hack to prevent console flushing problems with Windows
- myquiet <- quiet
+ if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet  # Hack to prevent console flushing problems with Windows
+ #myquiet <- quiet
 
   runtime <- system.time(res <-
   .Call("sampler", y, draws, burnin, designmatrix,

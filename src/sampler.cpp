@@ -288,17 +288,20 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   
   if (dontupdatemu) curpara(0) = 0; // just to be sure
 
-  NumericVector omega_diag(T);  // contains diagonal elements of precision matrix
+  NumericVector omega_diag(T+1);  // contains diagonal elements of precision matrix
   double omega_offdiag;  // contains off-diag element of precision matrix (const)
-  NumericVector chol_offdiag(T-1), chol_diag(T);  // Cholesky-factor of Omega
-  NumericVector covector(T);  // holds covector (see McCausland et al. 2011)
-  NumericVector htmp(T);  // intermediate vector for sampling h
+  NumericVector chol_offdiag(T), chol_diag(T+1);  // Cholesky-factor of Omega
+  NumericVector covector(T+1);  // holds covector (see McCausland et al. 2011)
+  NumericVector htmp(T+1);  // intermediate vector for sampling h
+  NumericVector hnew(T+1);  // intermediate vector for sampling h
 
-  double mytmpl;
   
   const double mu = curpara[0];
   const double phi = curpara[1];
   const double sigma2inv = pow(curpara[2], -2);
+
+  double Bh0inv = 1./priorlatent0;
+  if (priorlatent0 < 0) Bh0inv = 1-phi*phi;
   
   /*
    * Step (c): sample indicators
@@ -317,28 +320,17 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
    */
  
   if (centered_baseline) { // fill precision matrix omega and covector c for CENTERED para:
-
-/*
- * OLD CODE in version 1.3.1 and earlier (not conditionally on h0)
- *
- * omega_diag[0] = mix_varinv[r[0]] + sigma2inv;
- *  covector[0] = (data[0] - mix_mean[r[0]])*mix_varinv[r[0]]
- *             + mu*(1-phi)*sigma2inv;
- */
-
-// NEW CODE as of version 1.4.0 (conditionally on h0)
-  omega_diag[0] = mix_varinv[r[0]] + (1+phi*phi)*sigma2inv;
-  covector[0] = (data[0] - mix_mean[r[0]])*mix_varinv[r[0]]
-              + (mu + phi*h0 - 2.*phi*mu + phi*phi*mu) * sigma2inv;
-// END NEW CODE
-
-  for (int j = 1; j < (T-1); j++) {
-    omega_diag[j] = mix_varinv[r[j]] + (1+phi*phi)*sigma2inv; 
-    covector[j] = (data[j] - mix_mean[r[j]])*mix_varinv[r[j]]
-                + mu*pow((1-phi),2)*sigma2inv;
+  
+  omega_diag[0] = (Bh0inv + phi*phi) * sigma2inv;
+  covector[0] = mu * (Bh0inv - phi*(1-phi)) * sigma2inv;
+  
+  for (int j = 1; j < T; j++) {
+    omega_diag[j] = mix_varinv[r[j-1]] + (1+phi*phi)*sigma2inv; 
+    covector[j] = (data[j-1] - mix_mean[r[j-1]])*mix_varinv[r[j-1]]
+                + mu*(1-phi)*(1-phi)*sigma2inv;
    }
-   omega_diag[T-1] = mix_varinv[r[T-1]] + sigma2inv;
-   covector[T-1] = (data[T-1] - mix_mean[r[T-1]])*mix_varinv[r[T-1]]
+   omega_diag[T] = mix_varinv[r[T-1]] + sigma2inv;
+   covector[T] = (data[T-1] - mix_mean[r[T-1]])*mix_varinv[r[T-1]]
                  + mu*(1-phi)*sigma2inv;
    omega_offdiag = -phi*sigma2inv;  // omega_offdiag is constant
   
@@ -347,25 +339,15 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
    const double sigmainvtmp = sqrt(sigma2inv);
    const double phi2tmp = phi*phi;
 
-/*
- * OLD CODE in version 1.3.1 and earlier (not conditionally on h0)
- *
- * omega_diag[0] = mix_varinv[r[0]]/sigma2inv + 1;
- * covector[0] = mix_varinv[r[0]]/sigmainvtmp*(data[0] - mix_mean[r[0]] - mu);
- *
- */
+   omega_diag[0] = phi2tmp + Bh0inv;
+   covector[0] = 0.;
 
-// NEW CODE as of version 1.4.0 (conditionally on h0)
-   omega_diag[0] = mix_varinv[r[0]]/sigma2inv + 1 + phi2tmp;
-   covector[0] = mix_varinv[r[0]]/sigmainvtmp*(data[0] - mix_mean[r[0]] - mu) + phi*h0;
-// END NEW CODE
-
-   for (int j = 1; j < (T-1); j++) {
-    omega_diag[j] = mix_varinv[r[j]]/sigma2inv + 1 + phi2tmp; 
-    covector[j] = mix_varinv[r[j]]/sigmainvtmp*(data[j] - mix_mean[r[j]] - mu);
+   for (int j = 1; j < T; j++) {
+    omega_diag[j] = mix_varinv[r[j-1]]/sigma2inv + 1 + phi2tmp; 
+    covector[j] = mix_varinv[r[j-1]]/sigmainvtmp*(data[j-1] - mix_mean[r[j-1]] - mu);
    }
-   omega_diag[T-1] = mix_varinv[r[T-1]]/sigma2inv + 1;
-   covector[T-1] = mix_varinv[r[T-1]]/sigmainvtmp*(data[T-1] - mix_mean[r[T-1]] - mu);
+   omega_diag[T] = mix_varinv[r[T-1]]/sigma2inv + 1;
+   covector[T] = mix_varinv[r[T-1]]/sigmainvtmp*(data[T-1] - mix_mean[r[T-1]] - mu);
    omega_offdiag = -phi;  // omega_offdiag is constant
   } 
 
@@ -375,14 +357,18 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
   // Solution of Chol*x = covector ("forward algorithm")
   forwardAlg(chol_diag, chol_offdiag, covector, &htmp(0));
   
-  htmp = htmp + rnorm(T);
+  htmp = htmp + rnorm(T+1);
 
   // Solution of (Chol')*x = htmp ("backward algorithm")
-  backwardAlg(chol_diag, chol_offdiag, htmp, &h(0));
+  backwardAlg(chol_diag, chol_offdiag, htmp, &hnew(0));
 
-  // sample h0 | h1, phi, mu, sigma
+  for (int j = 0; j < T; j++) h(j) = hnew(j+1);  // TODO: REVISIT!!
+  h0 = hnew(0);
 
-  if (centered_baseline) {
+  // sample h0 | h1, phi, mu, sigma (OBSOLETE, now included above)
+
+  // double mytmpl;
+  /* if (centered_baseline) {
    if (priorlatent0 < 0.) {
     h0 = as<double>(rnorm(1, mu + phi*(h[0]-mu), curpara[2]));
    } else {
@@ -397,6 +383,7 @@ void update(const NumericVector &data, double *curpara_in, double *h_in,
     h0 = as<double>(rnorm(1, mytmpl*phi*h[0], sqrt(mytmpl)));
    }
   }
+  */
   
   /*
    * Step (b): sample mu, phi, sigma
@@ -453,6 +440,10 @@ Rcpp::NumericVector regressionCentered(
        double B011inv, double B022inv,
        bool Gammaprior, bool truncnormal, double MHcontrol, int MHsteps,
        const bool dontupdatemu, const double priorlatent0) {
+
+ double Bh0inv = 1./priorlatent0;
+ if (priorlatent0 < 0) Bh0inv = 1-phi*phi;
+
  if (dontupdatemu) mu = 0;
  
  int T = h.length();
@@ -465,21 +456,41 @@ Rcpp::NumericVector regressionCentered(
  Rcpp::NumericVector innov(2);
  Rcpp::NumericVector quant(2);
 
+ // first calculate bT and BT:
+ sum1 = h[0];
+ sum3 = h0*h[0];
+ sum4 = h[0]*h[0];
+ for (int j = 1; j < T-1; j++) {
+  sum1 += h[j];
+  sum3 += h[j-1]*h[j];
+  sum4 += h[j]*h[j];
+ }
+ sum2 = sum1 + h[T-1];  // h_1 + h_2 + ... + h_T
+ sum1 += h0;            // h_0 + h_1 + ... + h_{T-1}
+ sum3 += h[T-2]*h[T-1]; // h_0*h_1 + h_1*h_2 + ... + h_{T-1}*h_T
+ sum4 += h0*h0;         // h_0^2 + h_1^2 + ... + h_{T-1}^2
+
+ tmp1 = 1/(((sum4 + B011inv)*(T+B022inv)-sum1*sum1));
+ BT11 = (T + B022inv)*tmp1;
+ BT12 = -sum1*tmp1;
+ BT22 = (sum4+B011inv)*tmp1;
+ 
+ bT1 = BT11*sum3 + BT12*sum2;
+ bT2 = BT12*sum3 + BT22*sum2;
+
 // draw sigma^2 
  if (MHsteps == 2 || MHsteps == 3 || dontupdatemu == true) { // draw sigma^2 from full conditional
   z = pow(((h[0]-mu)-phi*(h0-mu)),2);  // TODO: more efficiently via sum1, sum2, etc.
   for (int j = 0; j < (T-1); j++) {
    z += pow((h[j+1]-mu)-phi*(h[j]-mu),2);
   }
-  z = (z+(h0-mu)*(h0-mu)*(1-phi*phi));
+  z += (h0-mu)*(h0-mu)*Bh0inv;
   if (MHcontrol > 0) {  // let's do a log normal random walk
    sigma2_prop = exp(Rcpp::rnorm(1,log(sigma*sigma), MHcontrol)[0]);
    logR = logacceptrateRW(sigma2_prop, sigma*sigma, Bsigma, T, z);
 
-//  REprintf("\nold: %f, new: %f, R: %f", sigma, sqrt(sigma2_prop), exp(logR));
    if (log(Rcpp::runif(1)[0]) < logR) sigma = sqrt(sigma2_prop);
-  }
-  else {  // either IG(-.5,0)-proposal or IG(1.5,1.5*Bsigma)-prior
+  } else {  // either IG(-.5,0)-proposal or IG(1.5,1.5*Bsigma)-prior
    if (Gammaprior) {
     CT = .5*z;
     sigma2_prop = 1/Rcpp::as<double>(Rcpp::rgamma(1, cT, 1/CT));
@@ -497,31 +508,6 @@ Rcpp::NumericVector regressionCentered(
    CT = .5*((sum4 - h0*h0 + h[T-1]*h[T-1]) - bT1*sum3 - bT2*sum2);
    sigma2_prop = 1/Rcpp::as<double>(Rcpp::rgamma(1, cT, 1/CT));
   }
- }
-
-
- // first calculate bT and BT:
- sum1 = h[0];
- sum3 = h0*h[0];
- sum4 = h[0]*h[0];
- for (int j = 1; j < T-1; j++) {
-  sum1 += h[j];
-  sum3 += h[j-1]*h[j];
-  sum4 += h[j]*h[j];
- }
- sum2 = sum1 + h[T-1];  // h_1 + h_2 + ... + h_T
- sum1 += h0;            // h_0 + h_1 + ... + h_{T-1}
- sum3 += h[T-2]*h[T-1]; // h_0*h_1 + h_1*h_2 + ... + h_{T-1}*h_T
- sum4 += h0*h0;         // h_0^2 + h_1^2 + ... + h_{T-1}^2
-
- if (dontupdatemu == false) {  // not needed otherwise
-  tmp1 = 1/(((sum4 + B011inv)*(T+B022inv)-sum1*sum1));
-  BT11 = (T + B022inv)*tmp1;
-  BT12 = -sum1*tmp1;
-  BT22 = (sum4+B011inv)*tmp1;
- 
-  bT1 = BT11*sum3 + BT12*sum2;
-  bT2 = BT12*sum3 + BT22*sum2;
  }
 
   
@@ -555,13 +541,8 @@ Rcpp::NumericVector regressionCentered(
    bT = (sum2-phi*sum1)/(T+B022inv);
    gamma_prop = as<double>(Rcpp::rnorm(1, bT, BTsqrt));
   
-   if (priorlatent0 < 0.) {
-    R = logdnorm(h0, gamma_prop/(1-phi), sigma/sqrt(1-phi*phi));
-    R -= logdnorm(h0, gamma/(1-phi), sigma/sqrt(1-phi*phi));
-   } else {
-    R = logdnorm(h0, gamma_prop/(1-phi), sqrt(priorlatent0)*sigma);
-    R -= logdnorm(h0, gamma/(1-phi), sqrt(priorlatent0)*sigma);
-   }
+   R = logdnorm(h0, gamma_prop/(1-phi), sigma/sqrt(Bh0inv));
+   R -= logdnorm(h0, gamma/(1-phi), sigma/sqrt(Bh0inv));
    R += logdnorm(gamma_prop, bmu*(1-phi), sqrt(Bmu)*(1-phi));
    R -= logdnorm(gamma, bmu*(1-phi), sqrt(Bmu)*(1-phi));
    R += logdnorm(gamma, 0, sigma/sqrt(B022inv));
@@ -748,13 +729,10 @@ Rcpp::NumericVector regressionNoncentered(
  }
  
  // now for the MH step, acceptance prob expR
- if (priorlatent0 < .0) {
+ if (priorlatent0 < .0) { // only needed if prior of ho depends on phi
   expR  = exp(logdnorm(h0, 0, 1/sqrt(1-phi_prop*phi_prop))
             - logdnorm(h0, 0, 1/sqrt(1-phi*phi)));
- } else {
-  expR  = exp(logdnorm(h0, 0, sqrt(priorlatent0))
-            - logdnorm(h0, 0, sqrt(priorlatent0)));
- }
+ } else expR = 1;
  expR *= propBeta((phi_prop+1)/2, (phi+1)/2, a0, b0);
  // ^^note that factor 1/2 from transformation of densities cancels
 

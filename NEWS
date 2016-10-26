@@ -1,3 +1,9 @@
+Changes in Version 1.3.2:
+  - Some more changes in the AWOL sampler because version 1.3.1 appeared to be
+    unstable under Solaris: Sampling of h (including h0) is now done AWOL.
+  - Turned progress indicator off again (not sure whether this causes issues
+    with Solaris).
+
 Changes in Version 1.3.1:
   - Parameter starting values are now set to their respective prior means
     (if not specified by the user).
