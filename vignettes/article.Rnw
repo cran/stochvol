@@ -95,10 +95,11 @@ It utilizes Markov chain Monte Carlo (MCMC) samplers to conduct inference by obt
 
 <<preliminaries, echo=FALSE, results=hide>>=
 options(prompt = 'R> ', continue = '+  ')
+plotevery <- 10L # can be used for trace plots to make vignette smaller
 @
 
 \section*{Preface}
-This vignette corresponds to an article of the same name which is published in the Journal of Statistical Software. At the time of this writing, the vignette and the published article coincide; nevertheless, the version at hand might receive minor updates as time goes by. To cite, please use \cite{kas:dea}. Further information about citing \pkg{stochvol} can be obtained in \proglang{R} by installing the package, e.g., through \code{install.packages("stochvol")}, and calling \code{citation("stochvol")}.
+This vignette corresponds to an article of the same name which is published in the Journal of Statistical Software. At the time of this writing, the vignette and the published article essentially coincide (in some trace plots within this vignette, only every 10th value is shown to keep \pkg{stochvol} below the 5MB mark). The version at hand might receive minor updates as time goes by. To cite, please use \cite{kas:dea}. Further information about citing \pkg{stochvol} can be obtained in \proglang{R} by installing the package, e.g., through \code{install.packages("stochvol")}, and calling \code{citation("stochvol")}.
 
 \section{Introduction}
 Returns -- in particular financial returns -- are commonly analyzed by estimating and predicting potentially time-varying volatilities. This focus has a long history, dating back at least to \cite{mar:por} who investigates portfolio construction with optimal expected return-variance trade-off. In his article, he proposes rolling-window-type estimates for the instantaneous volatilities, but already then recognizes the potential for ``better methods, which take into account more information''.
@@ -452,7 +453,7 @@ colMeans(draws1)
 
 <<homo, echo=FALSE, fig=TRUE, include=FALSE, width=7.5, height=6>>=
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
-plot(coda::mcmc(draws1), show.obs = FALSE)
+plot(coda::mcmc(draws1[seq(1L, nrow(draws1), by = plotevery),]), show.obs = FALSE)
 @
 
 <<eval=FALSE>>=
@@ -568,7 +569,7 @@ plot(coda::mcmc(draws2[, 4:7]), show.obs = FALSE)
 
 <<hetero, fig=TRUE, include=FALSE, echo=FALSE, results=hide, width=7.5, height=8>>=
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
-plot(coda::mcmc(draws2selection[, 1:4]), show.obs = FALSE)
+plot(coda::mcmc(draws2selection[seq(1L, nrow(draws2selection), by = plotevery), 1:4]), show.obs = FALSE)
 @
 
 \begin{figure}[!ht]
@@ -897,17 +898,20 @@ lines(density(realresselection[[2]][,"beta_1"], bw="SJ", adjust=smootherfactor),
 #lines(confint(ols)[2,], rep(0,2), col=2)
 legend("topright", c("SV", "GARCH", "homosked."), col=c(1,4,2), lty=1:3)
 
-plotorder <- sample.int(3*nrow(realresselection[[1]]))
-cols <- rep(c("#000000aa", "#0000ff66", "#ff000077"), each=nrow(realresselection[[1]]))[plotorder]
-pchs <- rep(1:3, each=nrow(realresselection[[1]]))[plotorder]
+showevery <- 2L
+plotorder <- sample.int(3*(nrow(realresselection[[1]]) / showevery))
+cols <- rep(c("#000000bb", "#0000ff88", "#ff000088"),
+	    each = nrow(realresselection[[1]]) / showevery)[plotorder]
+pchs <- rep(1:3, each=nrow(realresselection[[1]]) / showevery)[plotorder]
 
-beta0 <- c(realresselection[[1]][,"beta_0"],
-	   realresselection[[3]][,"beta_0"],
-	   realresselection[[2]][,"beta_0"])[plotorder]
+myseq <- seq(1, nrow(realresselection[[1]]), by = showevery)
+beta0 <- c(realresselection[[1]][myseq,"beta_0"],
+	   realresselection[[3]][myseq,"beta_0"],
+	   realresselection[[2]][myseq,"beta_0"])[plotorder]
 
-beta1 <- c(realresselection[[1]][,"beta_1"],
-	   realresselection[[3]][,"beta_1"],
-	   realresselection[[2]][,"beta_1"])[plotorder]
+beta1 <- c(realresselection[[1]][myseq,"beta_1"],
+	   realresselection[[3]][myseq,"beta_1"],
+	   realresselection[[2]][myseq,"beta_1"])[plotorder]
 
 plot(beta0, beta1, col=cols, pch=pchs,
     xlab=bquote(paste("p(",beta[0],"|", bold(y), ")")),

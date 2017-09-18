@@ -2,9 +2,16 @@
 
 #include "sampler.h"
 
-// registering "update" to be available for other packages
+static const R_CallMethodDef CallEntries[] = {
+    {"sampler", (DL_FUNC) &sampler, 27},
+    {NULL, NULL, 0}
+};
 
 RcppExport void R_init_stochvol(DllInfo *dll) {
+ R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+ R_useDynamicSymbols(dll, FALSE);
+
+ // registering "update" to be available for other packages
  R_RegisterCCallable("stochvol", "update", (DL_FUNC) &update);
 }
 

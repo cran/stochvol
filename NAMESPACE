@@ -1,4 +1,4 @@
-useDynLib(stochvol)
+useDynLib(stochvol, .registration = TRUE)
 
 import(methods)
 import(stats)

@@ -1,3 +1,8 @@
+Changes in Version 1.3.3:
+  - Registered native routines.  
+  - Workaround for typo appearing in conversion of help files to LaTeX document.
+    Thanks to Evelyn Mitchell for pointing this out.
+
 Changes in Version 1.3.2:
   - Some more changes in the AWOL sampler because version 1.3.1 appeared to be
     unstable under Solaris: Sampling of h (including h0) is now done AWOL.
