@@ -1,751 +1,376 @@
-// Main sampling steps and helper functions
-
+#include <RcppArmadillo.h>
 #include "sampler.h"
+#include "update_functions.h"
+#include "auxmix.h"
+#include "progutils.h"
+#include "regression.h"
+#include "parameterization.h"
 
-static const R_CallMethodDef CallEntries[] = {
-    {"sampler", (DL_FUNC) &sampler, 27},
-    {NULL, NULL, 0}
-};
+using namespace Rcpp;
 
-RcppExport void R_init_stochvol(DllInfo *dll) {
- R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
- R_useDynamicSymbols(dll, FALSE);
+List svsample_cpp(
+    const arma::vec& y_in,
+    const int draws,
+    const int burnin,
+    const arma::mat& X_in,
+    const double bmu,
+    const double Bmu,
+    const double a0,
+    const double b0,
+    const double Bsigma,
+    const int thin,
+    const int timethin,
+    const List& startpara,
+    const arma::vec& startvol,
+    const bool keeptau,
+    const bool quiet,
+    const int para,
+    const int MHsteps,
+    const double B011,
+    const double B022,
+    const double mhcontrol,
+    const bool gammaprior,
+    const bool truncnormal,
+    const double offset,
+    const bool dontupdatemu,
+    const arma::vec& priordf_in,
+    const arma::vec& priorbeta_in,
+    const double priorlatent0) {
 
- // registering "update" to be available for other packages
- R_RegisterCCallable("stochvol", "update", (DL_FUNC) &update);
-}
+  arma::vec y(y_in);
 
-using namespace Rcpp; // avoid to type Rcpp:: every time
+  arma::mat X(X_in);
 
-// RcppExport is an alias for 'extern "C"'
-RcppExport SEXP sampler(const SEXP y_in, const SEXP draws_in,
-  const SEXP burnin_in, const SEXP X_in,
-  const SEXP bmu_in, const SEXP Bmu_in,
-  const SEXP a0_in, const SEXP b0_in, const SEXP Bsigma_in,
-  const SEXP thin_in, const SEXP timethin_in, const SEXP startpara_in,
-  const SEXP startvol_in, const SEXP keeptau_in,
-  const SEXP quiet_in, const SEXP para_in,
-  const SEXP MHsteps_in, const SEXP B011_in, const SEXP B022_in,
-  const SEXP mhcontrol_in, const SEXP gammaprior_in,
-  const SEXP truncnormal_in, const SEXP offset_in,
-  const SEXP dontupdatemu_in, const SEXP priordf_in,
-  const SEXP priorbeta_in, const SEXP priorlatent0_in) {
+  int T = y.size();
+  int p = X.n_cols;
 
- //RNGScope scope;       // just in case no seed has been set at R level
- GetRNGstate(); // "by hand" because RNGScope isn't safe if return
-                // variables are declared afterwards
+  // should we model the mean as well?
+  bool regression;
+  if (ISNA(X.at(0,0))) regression = false; else regression = true;
+  arma::vec priorbeta(priorbeta_in);
 
- // convert SEXP into Rcpp-structures (no copy at this point)
- NumericVector y(y_in), startvol(startvol_in);
- arma::vec armay(y.begin(), y.length(), false);
+  // prior mean and precision matrix for the regression part (currently fixed)
+  arma::vec priorbetamean(p); priorbetamean.fill(priorbeta[0]);
+  arma::mat priorbetaprec(p, p, arma::fill::zeros);
+  priorbetaprec.diag() += 1./(priorbeta[1]*priorbeta[1]);
 
- NumericMatrix X(X_in);
+  // number of MCMC draws
+  int N 	    = burnin + draws;
 
- int T = y.length();
- int p = X.ncol();
- arma::mat armaX(X.begin(), T, p, false);
- 
- // should we model the mean as well?
- bool regression;
- if (ISNA(X(0,0))) regression = false; else regression = true;
- NumericVector priorbeta(priorbeta_in);
+  // verbosity control
+  bool verbose = !quiet;
 
- // prior mean and precision matrix for the regression part (currently fixed)
- arma::vec priorbetamean(p); priorbetamean.fill(priorbeta(0));
- arma::mat priorbetaprec(p, p, arma::fill::zeros);
- priorbetaprec.diag() += 1./(priorbeta(1)*priorbeta(1));
- 
- List startpara(startpara_in);
+  // "expert" settings:
+  double B011inv         = 1/B011;
+  double B022inv         = 1/B022;
+  bool Gammaprior        = gammaprior;
+  double MHcontrol       = mhcontrol;
+  int parameterization   = para;
+  bool centered_baseline = parameterization % 2; // 0 for C, 1 for NC baseline
 
- double priorlatent0 = as<double>(priorlatent0_in);
+  // t-errors:
+  bool terr;
+  arma::vec priordf(priordf_in);
 
- // number of MCMC draws
- int burnin = as<int>(burnin_in);
- int draws  = as<int>(draws_in);
- int N 	    = burnin + draws;
- 
- // prior parameters
- double bmu    = as<double>(bmu_in);
- double Bmu    = as<double>(Bmu_in);
- double a0     = as<double>(a0_in);
- double b0     = as<double>(b0_in);
- double Bsigma = as<double>(Bsigma_in);
- 
- // thinning parameters
- int timethin = as<int>(timethin_in);
- int thin     = as<int>(thin_in);
+  if (ISNA(priordf[0])) terr = false; else terr = true;
 
- bool keeptau = as<bool>(keeptau_in);
- 
- // verbosity control
- bool verbose = !as<bool>(quiet_in);
+  // moment-matched IG-prior
+  double c0 = 2.5;
+  double C0 = 1.5*Bsigma;
 
- // "expert" settings:
- double B011inv         = 1/as<double>(B011_in);
- double B022inv         = 1/as<double>(B022_in);
- bool Gammaprior        = as<bool>(gammaprior_in);
- bool truncnormal       = as<bool>(truncnormal_in);
- double MHcontrol       = as<double>(mhcontrol_in);
- int MHsteps            = as<int>(MHsteps_in);
- int parameterization   = as<int>(para_in);
- bool centered_baseline = as<int>(para_in) % 2; // 0 for C, 1 for NC baseline
-
- // offset:
- double offset		= as<double>(offset_in);
-
- // t-errors:
- bool terr;
- NumericVector priordf(priordf_in);
-
- if (ISNA(priordf(0))) terr = false; else terr = true;
-
- // indicator telling us whether assume mu = 0 fixed
- bool dontupdatemu      = as<bool>(dontupdatemu_in);
-
- // moment-matched IG-prior
- double c0 = 2.5;
- double C0 = 1.5*Bsigma;
-
- // pre-calculation of a posterior parameter
- double cT = -10000; 
- if (Gammaprior) {  
-  if (MHsteps == 2 || MHsteps == 3) cT = T/2.0; // we want IG(-.5,0) as proposal
-  else if (MHsteps == 1) cT = (T-1)/2.0; // we want IG(-.5,0) as proposal
- }
- else {
-  if (MHsteps == 2) cT = c0 + (T+1)/2.0;  // pre-calculation outside the loop
-  else return LogicalVector::create(NA_LOGICAL);  // not implemented!
- }
-
- if (dontupdatemu == true && MHsteps == 1) { // not implemented (would be easy, though)
-  return LogicalVector::create(NA_LOGICAL);
- }
- 
- // initialize the variables:
- NumericVector sigma2inv(N+1, pow(as<double>(startpara["sigma"]), -2));
- NumericVector phi(N+1, as<double>(startpara["phi"]));
- NumericVector mu(N+1, as<double>(startpara["mu"]));
- 
- NumericVector h(T);  // contains h1 to hT, but not h0!
- for (int i = 0; i < T; i++) h[i] = startvol[i];  // need to make a manual copy (!)
- if (!centered_baseline) h = (h-mu[0])*sqrt(sigma2inv[0]);
- 
- double h0;
- 
- IntegerVector r(T);  // mixture indicators
- 
- int hstorelength = (T-1)/timethin+1;
- NumericMatrix hstore(hstorelength, draws/thin);
- NumericVector h0store(draws/thin);
-
- NumericMatrix mixprob(10, T);  // mixture probabilities
- 
- NumericVector data = log(y*y + offset);  // commonly used transformation
- arma::vec armadata(data.begin(), data.length(), false);
- 
- NumericVector datastand = clone(data);  // standardized "data" (different for t-errors)
- arma::vec armadatastand(datastand.begin(), datastand.length(), false);
- 
- NumericVector curpara(3);  // holds mu, phi, sigma in every iteration
- curpara[0] = mu[0];
- curpara[1] = phi[0];
- curpara[2] = 1/sqrt(sigma2inv[0]);
- 
- // some stuff for the t-errors
- double nu;
- if (terr) nu = as<double>(startpara["nu"]);
- NumericVector tau(T, 1.);
-
- NumericVector nustore(terr * (N+1), nu);
- NumericMatrix taustore(hstorelength * keeptau, draws/thin);
-
- // some stuff for the regression part
- NumericVector curbeta(p, .012345);
- arma::vec armabeta(curbeta.begin(), curbeta.length(), false);
- arma::vec normalizer;
- arma::mat Xnew = as<arma::mat>(clone(X));
- arma::vec ynew = as<arma::vec>(clone(y));
- arma::mat postprecchol(p, p);
- arma::mat postpreccholinv(p, p);
- arma::mat postcov(p, p);
- arma::vec postmean(p);
- arma::vec armadraw(p);
- NumericMatrix betastore(regression * (N+1), p);
- arma::mat armabetastore(betastore.begin(), betastore.nrow(), betastore.ncol(), false);
-
- // initializes the progress bar
- // "show" holds the number of iterations per progress sign
- int show = 0;
- if (verbose) show = progressbar_init(N);
- 
- for (int i = 0; i < N; i++) {  // BEGIN main MCMC loop
-
-  // print a progress sign every "show" iterations
-  if (verbose) if (!(i % show)) progressbar_print();
-
-  if (regression) {
-   armadatastand = armadata = log(square(armay - armaX * armabeta));
+  // pre-calculation of a posterior parameter
+  double cT = -10000; 
+  if (Gammaprior) {  
+    if (MHsteps == 2 || MHsteps == 3) cT = T/2.0; // we want IG(-.5,0) as proposal
+    else if (MHsteps == 1) cT = (T-1)/2.0; // we want IG(-.5,0) as proposal
   }
-  
-  if (terr) {
-   if (centered_baseline) update_terr(data - h, &tau(0), nu, priordf(0), priordf(1));
-   else update_terr(data - curpara(0) - curpara(2) * h, &tau(0), nu, priordf(0), priordf(1));
-   
-   datastand = data - log(tau);
+  else {
+    if (MHsteps == 2) cT = c0 + (T+1)/2.0;  // pre-calculation outside the loop
+    else Rf_error("This setup is not yet implemented");
   }
 
-  // a single MCMC update: update indicators, latent volatilities,
-  // and parameters ONCE
-  update(datastand, &curpara(0), &h(0), h0, &mixprob(0,0), &r(0), centered_baseline, C0, cT,
-         Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv, Gammaprior,
-	 truncnormal, MHcontrol, MHsteps, parameterization, dontupdatemu, priorlatent0);
-
-  if (regression) { // update betas (regression)
-   normalizer = exp(-h/2);
-   Xnew = armaX;
-   Xnew.each_col() %= normalizer;
-   ynew = as<arma::vec>(y) % normalizer;
-   
-   // cholesky factor of posterior precision matrix
-   postprecchol = arma::chol(Xnew.t() * Xnew + priorbetaprec);
-   
-   // inverse cholesky factor of posterior precision matrix 
-   postpreccholinv = arma::solve(arma::trimatu(postprecchol), arma::eye<arma::mat>(p, p));
-
-   // posterior covariance matrix and posterior mean vector
-   postcov = postpreccholinv * postpreccholinv.t();
-   postmean = postcov * (Xnew.t() * ynew + priorbetaprec * priorbetamean);
-
-   armadraw = rnorm(p);
-
-   // posterior betas
-   armabeta = postmean + postpreccholinv * armadraw;
+  if (dontupdatemu == true && MHsteps == 1) { // not implemented (would be easy, though)
+    Rf_error("This setup is not yet implemented");
   }
-  
-  // storage:
-  if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store h
-   store_h(&h(0), &hstore(0, (i-burnin)/thin), timethin, hstorelength,
-           h0, &h0store((i-burnin)/thin), curpara, centered_baseline);
-   if (keeptau && terr) {
-    store_tau(&tau(0), &taustore(0, (i-burnin)/thin), timethin, hstorelength);
-   }
-  }
-  mu[i+1] = curpara[0];
-  phi[i+1] = curpara[1];
-  sigma2inv[i+1] = 1/(curpara[2]*curpara[2]);
-  if (terr) nustore[i+1] = nu;
-  if (regression) armabetastore.row(i+1) = armabeta.t();
- }  // END main MCMC loop
 
- if (verbose) progressbar_finish(N);  // finalize progress bar
+  // initialize the variables:
+  arma::vec sigma2inv = arma::ones(N+1) * pow(as<double>(startpara["sigma"]), -2);
+  arma::vec phi = arma::ones(N+1) * as<double>(startpara["phi"]);
+  arma::vec mu = arma::ones(N+1) * as<double>(startpara["mu"]);
 
- // Prepare return value and return
- PutRNGstate();
- return cleanUp(mu, phi, sqrt(1/sigma2inv), hstore, h0store, nustore, taustore, betastore);
-}
+  arma::vec h = startvol;  // contains h1 to hT, but not h0!
+  if (!centered_baseline) h = (h-mu[0])*sqrt(sigma2inv[0]);
 
+  double h0;
 
+  arma::ivec r(T);  // mixture indicators
 
-// update_terr performs an update of latent tau and df parameter nu
-void update_terr(const NumericVector &data, 
-                 double *tau, double &nu,
-		 const double lower, const double upper) {
- 
- int T = data.length();
- 
- // **** STEP 1: Update tau ****
- 
- double sumtau = 0.;
- 
- for (int i = 0; i < T; i++) {
-  // Watch out, Rf_rgamma(shape, scale), not Rf_rgamma(shape, rate)
-  tau[i] = 1./::Rf_rgamma((nu + 1.) / 2., 2. / (nu + exp(data(i))));
-  sumtau += log(tau[i]) + 1/tau[i];
- }
+  int hstorelength = (T-1)/timethin+1;
+  arma::mat hstore(hstorelength, draws/thin);
+  arma::vec h0store(draws/thin);
 
+  arma::mat mixprob(10, T);  // mixture probabilities
+  arma::vec mixprob_vec(mixprob.begin(), mixprob.n_elem, false);
 
- // **** STEP 2: Update nu ****
- 
- double numean = newtonRaphson(nu, sumtau, T, lower, upper);
- double auxsd = sqrt(-1/ddlogdnu(numean, T)); 
- double nuprop = ::Rf_rnorm(numean, auxsd);
- double logR = logdnu(nuprop, sumtau, T) - logdnu(nu, sumtau, T) +
-               logdnorm(nu, numean, auxsd) - logdnorm(nuprop, numean, auxsd);
+  arma::vec data = log(y%y + offset);  // commonly used transformation
 
- if (log(::Rf_runif(0.,1.)) < logR && nuprop < upper && nuprop > lower) nu = nuprop;
-}
+  arma::vec datastand = data;  // standardized "data" (different for t-errors)
 
-// update performs one MCMC sampling step (normal errors):
-void update(const NumericVector &data, double *curpara_in, double *h_in,
-            double &h0, double *mixprob, int *r,
-	    const bool centered_baseline, const double C0, const double cT,
-	    const double Bsigma, const double a0, const double b0,
-	    const double bmu, const double Bmu, const double B011inv,
-	    const double B022inv, const bool Gammaprior, const bool truncnormal,
-	    const double MHcontrol, const int MHsteps, const int parameterization,
-	    const bool dontupdatemu, const double priorlatent0) {
-   
-  int T = data.length();
+  arma::vec curpara(3);  // holds mu, phi, sigma in every iteration
+  curpara[0] = mu[0];
+  curpara[1] = phi[0];
+  curpara[2] = 1/sqrt(sigma2inv[0]);
 
-  NumericVector h(T);  // h needs to be NumericVector in current implementation
-  for (int j = 0; j < T; j++) h(j) = h_in[j];  // maybe revisit to avoid copying
-  
-  NumericVector curpara(3);  // curpara needs to be NumericVector in current implementation
-  for (int j = 0; j < 3; j++) curpara(j) = curpara_in[j];  // maybe revisit to avoid copying
-  
-  if (dontupdatemu) curpara(0) = 0; // just to be sure
+  // some stuff for the t-errors
+  double nu = -1;
+  if (terr) nu = as<double>(startpara["nu"]);
+  arma::vec tau = arma::ones(T);
 
-  NumericVector omega_diag(T+1);  // contains diagonal elements of precision matrix
-  double omega_offdiag;  // contains off-diag element of precision matrix (const)
-  NumericVector chol_offdiag(T), chol_diag(T+1);  // Cholesky-factor of Omega
-  NumericVector covector(T+1);  // holds covector (see McCausland et al. 2011)
-  NumericVector htmp(T+1);  // intermediate vector for sampling h
-  NumericVector hnew(T+1);  // intermediate vector for sampling h
+  arma::vec nustore = arma::ones(terr * (N+1)) * nu;
+  arma::mat taustore(hstorelength * keeptau, draws/thin);
 
-  
-  const double mu = curpara[0];
-  const double phi = curpara[1];
-  const double sigma2inv = pow(curpara[2], -2);
+  // some stuff for the regression part
+  arma::vec curbeta(p, arma::fill::ones);
+  arma::vec normalizer;
+  arma::mat Xnew = X;
+  arma::vec ynew = y;
+  arma::mat postprecchol(p, p);
+  arma::mat postpreccholinv(p, p);
+  arma::mat postcov(p, p);
+  arma::vec postmean(p);
+  arma::vec armadraw(p);
+  arma::mat betastore(regression * (N+1), p);
 
-  double Bh0inv = 1./priorlatent0;
-  if (priorlatent0 < 0) Bh0inv = 1-phi*phi;
-  
-  /*
-   * Step (c): sample indicators
-   */
+  // initializes the progress bar
+  // "show" holds the number of iterations per progress sign
+  int show = 0;
+  if (verbose) show = progressbar_init(N);
 
-  // calculate non-normalized CDF of posterior indicator probs
+  for (int i = 0; i < N; i++) {  // BEGIN main MCMC loop
+    R_CheckUserInterrupt();
 
-  if (centered_baseline) findMixCDF(mixprob, data-h);
-  else findMixCDF(mixprob, data-mu-curpara[2]*h); 
+    // print a progress sign every "show" iterations
+    if (verbose) if (!(i % show)) progressbar_print();
 
-  // find correct indicators (currently by inversion method)
-  invTransformSampling(mixprob, r, T);
-  
-  /*
-   * Step (a): sample the latent volatilities h:
-   */
- 
-  if (centered_baseline) { // fill precision matrix omega and covector c for CENTERED para:
-  
-  omega_diag[0] = (Bh0inv + phi*phi) * sigma2inv;
-  covector[0] = mu * (Bh0inv - phi*(1-phi)) * sigma2inv;
-  
-  for (int j = 1; j < T; j++) {
-    omega_diag[j] = mix_varinv[r[j-1]] + (1+phi*phi)*sigma2inv; 
-    covector[j] = (data[j-1] - mix_mean[r[j-1]])*mix_varinv[r[j-1]]
-                + mu*(1-phi)*(1-phi)*sigma2inv;
-   }
-   omega_diag[T] = mix_varinv[r[T-1]] + sigma2inv;
-   covector[T] = (data[T-1] - mix_mean[r[T-1]])*mix_varinv[r[T-1]]
-                 + mu*(1-phi)*sigma2inv;
-   omega_offdiag = -phi*sigma2inv;  // omega_offdiag is constant
-  
-  } else { // fill precision matrix omega and covector c for NONCENTERED para:
-
-   const double sigmainvtmp = sqrt(sigma2inv);
-   const double phi2tmp = phi*phi;
-
-   omega_diag[0] = phi2tmp + Bh0inv;
-   covector[0] = 0.;
-
-   for (int j = 1; j < T; j++) {
-    omega_diag[j] = mix_varinv[r[j-1]]/sigma2inv + 1 + phi2tmp; 
-    covector[j] = mix_varinv[r[j-1]]/sigmainvtmp*(data[j-1] - mix_mean[r[j-1]] - mu);
-   }
-   omega_diag[T] = mix_varinv[r[T-1]]/sigma2inv + 1;
-   covector[T] = mix_varinv[r[T-1]]/sigmainvtmp*(data[T-1] - mix_mean[r[T-1]] - mu);
-   omega_offdiag = -phi;  // omega_offdiag is constant
-  } 
-
-  // Cholesky decomposition
-  cholTridiag(omega_diag, omega_offdiag, &chol_diag(0), &chol_offdiag(0));
- 
-  // Solution of Chol*x = covector ("forward algorithm")
-  forwardAlg(chol_diag, chol_offdiag, covector, &htmp(0));
-  
-  htmp = htmp + rnorm(T+1);
-
-  // Solution of (Chol')*x = htmp ("backward algorithm")
-  backwardAlg(chol_diag, chol_offdiag, htmp, &hnew(0));
-
-  for (int j = 0; j < T; j++) h(j) = hnew(j+1);  // TODO: REVISIT!!
-  h0 = hnew(0);
-
-  // sample h0 | h1, phi, mu, sigma (OBSOLETE, now included above)
-
-  // double mytmpl;
-  /* if (centered_baseline) {
-   if (priorlatent0 < 0.) {
-    h0 = as<double>(rnorm(1, mu + phi*(h[0]-mu), curpara[2]));
-   } else {
-    mytmpl = priorlatent0 / (1. + priorlatent0*phi*phi);
-    h0 = as<double>(rnorm(1, mu + mytmpl*phi*(h[0]-mu), sqrt(mytmpl)*curpara[2]));
-   }
-  } else {
-   if (priorlatent0 < 0.) {
-    h0 = as<double>(rnorm(1, phi*h[0], 1));
-   } else {
-    mytmpl = priorlatent0 / (1. + priorlatent0*phi*phi);
-    h0 = as<double>(rnorm(1, mytmpl*phi*h[0], sqrt(mytmpl)));
-   }
-  }
-  */
-  
-  /*
-   * Step (b): sample mu, phi, sigma
-   */
-  
-  if (centered_baseline) {  // this means we have C as base
-   curpara = regressionCentered(h0, h, mu, phi, curpara[2],
-     C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv,
-     B022inv, Gammaprior, truncnormal, MHcontrol, MHsteps, dontupdatemu, priorlatent0);
-
-   if (parameterization == 3) {  // this means we should interweave
-    double h0_alter;
-    htmp = (h-curpara[0])/curpara[2];
-    h0_alter = (h0-curpara[0])/curpara[2];
-    curpara = regressionNoncentered(data, h0_alter, htmp, r,
-      curpara[0], curpara[1], curpara[2], Bsigma, a0, b0, bmu, Bmu,
-      truncnormal, MHsteps, dontupdatemu, priorlatent0);
-    h = curpara[0] + curpara[2]*htmp;
-    h0 = curpara[0] + curpara[2]*h0_alter;
-   }
-  
-
-  } else {  // NC as base
-  
-   curpara = regressionNoncentered(data, h0, h, r, mu, phi, curpara[2],
-                                   Bsigma, a0, b0, bmu, Bmu, truncnormal, MHsteps,
-				   dontupdatemu, priorlatent0);
-
-   if (parameterization == 4) {  // this means we should interweave
-    double h0_alter;
-    htmp = curpara[0] + curpara[2]*h;
-    h0_alter = curpara[0] + curpara[2]*h0;
-    curpara = regressionCentered(h0_alter, htmp, curpara[0], curpara[1], curpara[2],
-                                 C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv,
-				 Gammaprior, truncnormal, MHcontrol, MHsteps,
-				 dontupdatemu, priorlatent0);
-    h = (htmp-curpara[0])/curpara[2];
-    h0 = (h0_alter-curpara[0])/curpara[2];
-   }
-  }
-  
-  for (int j = 0; j < T; j++) h_in[j] = h(j);  // maybe revisit to avoid copying
-  for (int j = 0; j < 3; j++) curpara_in[j] = curpara(j);  // maybe revisit to avoid copying
-}
-
-
-// Step (b): sample mu, phi, sigma - __CENTERED__ version:
-Rcpp::NumericVector regressionCentered(
-       double h0, const Rcpp::NumericVector &h,
-       double mu, double phi, double sigma,
-       double C0, double cT, double Bsigma,
-       double a0, double b0,
-       double bmu, double Bmu,
-       double B011inv, double B022inv,
-       bool Gammaprior, bool truncnormal, double MHcontrol, int MHsteps,
-       const bool dontupdatemu, const double priorlatent0) {
-
- double Bh0inv = 1./priorlatent0;
- if (priorlatent0 < 0) Bh0inv = 1-phi*phi;
-
- if (dontupdatemu) mu = 0;
- 
- int T = h.length();
- double z, CT, sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, tmp1,
-       	BT11, BT12, BT22, bT1 = 0, bT2 = 0, chol11, chol12, chol22, phi_prop,
-       	gamma_prop, tmpR, tmpR2, logR;
- double R = -10000.;
- double sigma2_prop = -10000.;
- double sigma_prop = -10000.;
- Rcpp::NumericVector innov(2);
- Rcpp::NumericVector quant(2);
-
- // first calculate bT and BT:
- sum1 = h[0];
- sum3 = h0*h[0];
- sum4 = h[0]*h[0];
- for (int j = 1; j < T-1; j++) {
-  sum1 += h[j];
-  sum3 += h[j-1]*h[j];
-  sum4 += h[j]*h[j];
- }
- sum2 = sum1 + h[T-1];  // h_1 + h_2 + ... + h_T
- sum1 += h0;            // h_0 + h_1 + ... + h_{T-1}
- sum3 += h[T-2]*h[T-1]; // h_0*h_1 + h_1*h_2 + ... + h_{T-1}*h_T
- sum4 += h0*h0;         // h_0^2 + h_1^2 + ... + h_{T-1}^2
-
- tmp1 = 1/(((sum4 + B011inv)*(T+B022inv)-sum1*sum1));
- BT11 = (T + B022inv)*tmp1;
- BT12 = -sum1*tmp1;
- BT22 = (sum4+B011inv)*tmp1;
- 
- bT1 = BT11*sum3 + BT12*sum2;
- bT2 = BT12*sum3 + BT22*sum2;
-
-// draw sigma^2 
- if (MHsteps == 2 || MHsteps == 3 || dontupdatemu == true) { // draw sigma^2 from full conditional
-  z = pow(((h[0]-mu)-phi*(h0-mu)),2);  // TODO: more efficiently via sum1, sum2, etc.
-  for (int j = 0; j < (T-1); j++) {
-   z += pow((h[j+1]-mu)-phi*(h[j]-mu),2);
-  }
-  z += (h0-mu)*(h0-mu)*Bh0inv;
-  if (MHcontrol > 0) {  // let's do a log normal random walk
-   sigma2_prop = exp(Rcpp::rnorm(1,log(sigma*sigma), MHcontrol)[0]);
-   logR = logacceptrateRW(sigma2_prop, sigma*sigma, Bsigma, T, z);
-
-   if (log(Rcpp::runif(1)[0]) < logR) sigma = sqrt(sigma2_prop);
-  } else {  // either IG(-.5,0)-proposal or IG(1.5,1.5*Bsigma)-prior
-   if (Gammaprior) {
-    CT = .5*z;
-    sigma2_prop = 1/Rcpp::as<double>(Rcpp::rgamma(1, cT, 1/CT));
-    if (log(Rcpp::as<double>(Rcpp::runif(1))) <
-        logacceptrateGamma(sigma2_prop, sigma*sigma, Bsigma)) {
-     sigma = sqrt(sigma2_prop);
+    if (regression) {
+      datastand = data = log(square(y - X*curbeta));
     }
-   } else {
-     CT = C0+.5*z;
-     sigma = sqrt(1/Rcpp::as<double>(Rcpp::rgamma(1, cT, 1/CT)));
-   }
-  }
- } else if (MHsteps == 1) {  // draw sigma^2 marginalized over gamma, phi
-  if (Gammaprior) {
-   CT = .5*((sum4 - h0*h0 + h[T-1]*h[T-1]) - bT1*sum3 - bT2*sum2);
-   sigma2_prop = 1/Rcpp::as<double>(Rcpp::rgamma(1, cT, 1/CT));
-  }
- }
 
-  
- // sampling of "betas" (i.e. phi and gamma)
- if (MHsteps == 3 || dontupdatemu == true) {
-  
-  // sampling of phi from full conditional:
-  double gamma = (1-phi)*mu;  // = 0 if mu = 0
-  double BTsqrt = sigma/sqrt(sum4+B011inv);
-  double bT = (sum3-gamma*sum1)/(sum4+B011inv);
-  phi_prop = as<double>(Rcpp::rnorm(1, bT, BTsqrt));
-  
-  R = 0;
-  if (priorlatent0 < 0.) { // needed only if prior of h0 depends on phi
-   R += logdnorm(h0, mu, sigma/sqrt(1-phi_prop*phi_prop));
-   R -= logdnorm(h0, mu, sigma/sqrt(1-phi*phi));
-  } 
-  R += logdbeta((phi_prop+1)/2, a0, b0);
-  R -= logdbeta((phi+1)/2, a0, b0);
-  R += logdnorm(phi, 0, sigma/sqrt(B011inv));
-  R -= logdnorm(phi_prop, 0, sigma/sqrt(B011inv));
+    if (terr) {
+      if (centered_baseline) update_terr(data - h, tau, nu, priordf[0], priordf[1]);
+      else update_terr(data - curpara[0] - curpara[2] * h, tau, nu, priordf[0], priordf[1]);
 
-  if (log(Rcpp::as<double>(Rcpp::runif(1))) < R) {
-   phi = phi_prop;
-  }
-  
-  if (dontupdatemu == false) {
-   // sampling of gamma from full conditional:
-   gamma = (1-phi)*mu;
-   BTsqrt = sigma/sqrt(T+B022inv);
-   bT = (sum2-phi*sum1)/(T+B022inv);
-   gamma_prop = as<double>(Rcpp::rnorm(1, bT, BTsqrt));
-  
-   R = logdnorm(h0, gamma_prop/(1-phi), sigma/sqrt(Bh0inv));
-   R -= logdnorm(h0, gamma/(1-phi), sigma/sqrt(Bh0inv));
-   R += logdnorm(gamma_prop, bmu*(1-phi), sqrt(Bmu)*(1-phi));
-   R -= logdnorm(gamma, bmu*(1-phi), sqrt(Bmu)*(1-phi));
-   R += logdnorm(gamma, 0, sigma/sqrt(B022inv));
-   R -= logdnorm(gamma_prop, 0, sigma/sqrt(B022inv));
-  
-   if (log(Rcpp::as<double>(Rcpp::runif(1))) < R) {
-    mu = gamma_prop/(1-phi);
-   }
-  }
- } else { 
-  // Some more temps needed for sampling the betas
-  chol11 = sqrt(BT11);
-  chol12 = (BT12/chol11);
-  chol22 = sqrt(BT22-chol12*chol12);
-  chol11 *= sigma;
-  chol12 *= sigma;
-  chol22 *= sigma;
+      datastand = data - log(tau);
+    }
 
-  if (truncnormal) { // draw from truncated normal via inversion method
-   quant = Rcpp::pnorm(Rcpp::NumericVector::create(-1,1), bT1, chol11);
-   phi_prop = (Rcpp::qnorm((quant[0] + Rcpp::runif(1)*(quant[1]-quant[0])),
-               bT1, chol11))[0];
-   gamma_prop = (Rcpp::rnorm(1, bT2 + chol12*((phi_prop-bT1)/chol11),
-                 chol22))[0];
-  }
-  else { // draw from normal and reject (return) if outside
-   innov = Rcpp::rnorm(1);
-   phi_prop = bT1 + chol11*innov[0];
-   if ((phi_prop >= 1) || (phi_prop <= -1)) { // outside the unit sphere
-    Rcpp::NumericVector ret = Rcpp::NumericVector::create(mu, phi, sigma);
-    return ret;
-   }
-   else gamma_prop = bT2 + chol12*innov[0] + chol22*Rcpp::rnorm(1)[0];
-  }
+    // a single MCMC update: update indicators, latent volatilities,
+    // and parameters ONCE
+    update_sv(datastand, curpara, h, h0, mixprob_vec, r, centered_baseline, C0, cT,
+        Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv, Gammaprior,
+        truncnormal, MHcontrol, MHsteps, parameterization, dontupdatemu, priorlatent0);
 
-  // acceptance probability exp(R) calculated on a log scale
-  tmpR = 1-phi_prop;  // some temps used for acceptance probability
-  tmpR2 = 1-phi;
- 
-  R = 0.;  // initialize R
-  if (MHsteps == 2) {
-   sigma_prop = sigma;  // sigma was accepted/rejected independently
-  } else if (MHsteps == 1) {
-   sigma_prop = sqrt(sigma2_prop);  // accept sigma jointly with "betas"
-   R = logacceptrateGamma(sigma2_prop, sigma*sigma, Bsigma);  // initialize R
-  }
- 
-  if (priorlatent0 < 0.) {
-   R += logdnorm(h0, gamma_prop/tmpR, sigma_prop/sqrt(1-phi_prop*phi_prop));
-   R -= logdnorm(h0, mu, sigma/sqrt(1-phi*phi));
-  } else {
-   R += logdnorm(h0, gamma_prop/tmpR, sqrt(priorlatent0)*sigma_prop);
-   R -= logdnorm(h0, mu, sqrt(priorlatent0)*sigma);
-  }
-  R += logdnorm(gamma_prop, bmu*tmpR, sqrt(Bmu)*tmpR);
-  R -= logdnorm(mu*tmpR2, bmu*tmpR2, sqrt(Bmu)*tmpR2);
-  R += logdbeta((phi_prop+1)/2, a0, b0);
-  R -= logdbeta((phi+1)/2, a0, b0);
-  R += logdnorm(phi, 0, sigma/sqrt(B011inv));
-  R -= logdnorm(phi_prop, 0, sigma_prop/sqrt(B011inv));
-  R += logdnorm(mu*tmpR2, 0, sigma/sqrt(B011inv));
-  R -= logdnorm(gamma_prop, 0, sigma_prop/sqrt(B011inv));
+    if (regression) { // update betas (regression)
+      normalizer = exp(-h/2);
+      Xnew = X;
+      Xnew.each_col() %= normalizer;
+      ynew = y % normalizer;
 
-  // accept/reject
-  if (log(Rcpp::as<double>(Rcpp::runif(1))) < R) {
-   mu = gamma_prop/(1-phi_prop);
-   phi = phi_prop;
-   if (MHsteps == 1) sigma = sigma_prop;
-  }
- }
+      // cholesky factor of posterior precision matrix
+      postprecchol = arma::chol(Xnew.t() * Xnew + priorbetaprec);  // TODO handle exceptions the R way
 
- Rcpp::NumericVector ret = Rcpp::NumericVector::create(mu, phi, sigma);
- return ret;
+      // inverse cholesky factor of posterior precision matrix 
+      postpreccholinv = arma::solve(arma::trimatu(postprecchol), arma::eye<arma::mat>(p, p));
+
+      // posterior covariance matrix and posterior mean vector
+      postcov = postpreccholinv * postpreccholinv.t();
+      postmean = postcov * (Xnew.t() * ynew + priorbetaprec * priorbetamean);
+
+      armadraw = rnorm(p);
+
+      // posterior betas
+      curbeta = postmean + postpreccholinv * armadraw;
+    }
+
+    // storage:
+    if (!((i+1) % thin)) if (i >= burnin) {  // this means we should store h
+      if (centered_baseline) {
+        for (int j = 0; j < hstorelength; j++) hstore.at(j, (i-burnin)/thin) = h[timethin*j];
+        h0store[(i-burnin)/thin] = h0;
+      } else {
+        for (int j = 0; j < hstorelength; j++) hstore.at(j, (i-burnin)/thin) = curpara[0] + curpara[2]*h[timethin*j];
+        h0store[(i-burnin)/thin] = curpara[0] + curpara[2]*h0;
+      }
+      if (keeptau && terr) {
+        for (int j = 0; j < hstorelength; j++) taustore.at(j, (i-burnin)/thin) = tau[timethin*j];
+      }
+    }
+    mu[i+1] = curpara[0];
+    phi[i+1] = curpara[1];
+    sigma2inv[i+1] = 1/(curpara[2]*curpara[2]);
+    if (terr) nustore[i+1] = nu;
+    if (regression) betastore.row(i+1) = curbeta.t();
+  }  // END main MCMC loop
+
+  if (verbose) progressbar_finish(N);  // finalize progress bar
+
+  // Prepare return value and return
+  return cleanUp(mu, phi, sqrt(1/sigma2inv), hstore, h0store, nustore, taustore, betastore);
 }
 
-// Step (b): sample mu, phi, sigma - __NONCENTERED__ version:
-Rcpp::NumericVector regressionNoncentered(
-       const Rcpp::NumericVector &data,
-       double h0, const Rcpp::NumericVector &h,
-       const int * const r,
-       double mu, double phi, double sigma,
-       double Bsigma, double a0, double b0,
-       double bmu, double Bmu,
-       bool truncnormal, int MHsteps,
-       const bool dontupdatemu, const double priorlatent0) {
- if (dontupdatemu) mu = 0;
- 
- int T = h.length();
- double sumtmp1, sumtmp2, expR, phi_prop, BT11, BT12, BT22, bT1, bT2, tmp1,
-       	tmp2, tmp3, tmp, chol11, chol12, chol22, tmpmean, tmpsd;
- Rcpp::NumericVector innov(2);
- Rcpp::NumericVector quant(2);
+List svlsample_cpp (
+    const arma::vec& y_in,
+    const int draws,
+    const int burnin,
+    const arma::mat& X,
+    const int thinpara,
+    const int thinlatent,
+    const int thintime,
+    const List& theta_init,
+    const arma::vec& h_init,
+    const double prior_phi_a,
+    const double prior_phi_b,
+    const double prior_rho_a,
+    const double prior_rho_b,
+    const double prior_sigma2_shape,
+    const double prior_sigma2_rate,
+    const double prior_mu_mu,
+    const double prior_mu_sigma,
+    const double prior_beta_mu,
+    const double prior_beta_sigma,
+    const bool verbose,
+    const double offset,
+    const double stdev,
+    const bool gammaprior,
+    const bool correct,
+    const CharacterVector& strategy_rcpp) {
 
- if (MHsteps == 3 || dontupdatemu) {  // Gibbs-sample mu|sigma,... and sigma|mu,...
+  const int N = burnin + draws;
+  const bool regression = !ISNA(X.at(0,0));
+  const int T = y_in.size();
+  const int p = X.n_cols;
 
-  // first, draw sigma from the full conditional posterior:
-  tmp1 = 0; 
-  tmp2 = 0; 
-  for (int j = 0; j < T; j++) {
-   tmp1 += h[j]*h[j]*mix_varinv[r[j]];
-   tmp2 += h[j]*(data[j]-mix_mean[r[j]]-mu)*mix_varinv[r[j]];
+  arma::vec y = y_in;
+  arma::vec y_star = log(y%y + offset);
+  arma::ivec d(T); std::transform(y_in.cbegin(), y_in.cend(), d.begin(), [](const double y_elem) -> int { return y_elem > 0 ? 1 : -1; });
+
+  double phi = theta_init["phi"];
+  double rho = theta_init["rho"];
+  double sigma2 = pow(as<double>(theta_init["sigma"]), 2);
+  double mu = theta_init["mu"];
+  arma::vec h = h_init, ht = (h_init-mu)/sqrt(sigma2);
+  arma::vec beta(p); beta.fill(0.0);
+
+  arma::mat betas(regression * draws/thinpara, p, arma::fill::zeros);
+  arma::mat params(draws/thinpara, 4);
+  arma::mat latent(draws/thinlatent, T/thintime);
+
+  // priors in objects
+  const arma::vec prior_phi = {prior_phi_a, prior_phi_b};
+  const arma::vec prior_rho = {prior_rho_a, prior_rho_b};
+  const arma::vec prior_sigma2 = {prior_sigma2_shape, prior_sigma2_rate};
+  const arma::vec prior_mu = {prior_mu_mu, prior_mu_sigma};
+
+  // don't use strings or RcppCharacterVector
+  arma::ivec strategy(strategy_rcpp.length());
+  std::transform(strategy_rcpp.cbegin(), strategy_rcpp.cend(), strategy.begin(),
+      [](const SEXP& par) -> int {
+        if (as<std::string>(par) == "centered") return int(Parameterization::CENTERED);
+        else if (as<std::string>(par) == "noncentered") return int(Parameterization::NONCENTERED);
+        else Rf_error("Illegal parameterization");
+  });
+
+  // some stuff for the regression part
+  // prior mean and precision matrix for the regression part (currently fixed)
+  const arma::vec y_in_arma(y_in.begin(), T);
+  const arma::vec priorbetamean = arma::ones(p) * prior_beta_mu;
+  const arma::mat priorbetaprec = arma::eye(p, p) / pow(prior_beta_sigma, 2);
+  arma::vec normalizer(T);
+  arma::mat X_reg(T, p);
+  arma::vec y_reg(T);
+  arma::mat postprecchol(p, p);
+  arma::mat postpreccholinv(p, p);
+  arma::mat postcov(p, p);
+  arma::vec postmean(p);
+  arma::vec armadraw(p);
+
+  // initializes the progress bar
+  // "show" holds the number of iterations per progress sign
+  const int show = verbose ? progressbar_init(N) : 0;
+
+  for (int i = -burnin+1; i < draws+1; i++) {
+    R_CheckUserInterrupt();
+
+    const bool thinpara_round = (thinpara > 1) && (i % thinpara != 0);  // is this a parameter thinning round?
+    const bool thinlatent_round = (thinlatent > 1) && (i % thinlatent != 0);  // is this a latent thinning round?
+
+    // print a progress sign every "show" iterations
+    if (verbose && (i % show == 0)) progressbar_print();
+
+    if (regression) {
+      y = y_in_arma - X*beta;
+      y_star = arma::log(arma::square(y));
+      std::transform(y.cbegin(), y.cend(), d.begin(), [](const double y_elem) -> int { return y_elem > 0 ? 1 : -1; });
+    }
+
+    // update theta and h
+    update_svl (y, y_star, d,
+      phi, rho, sigma2, mu,
+      h, ht,
+      prior_phi, prior_rho,
+      prior_sigma2, prior_mu,
+      stdev, gammaprior, correct,
+      strategy);
+
+    // update beta
+    if (regression) {
+      y_reg = y_in_arma;
+      y_reg.head(T-1) -= rho * (arma::exp(h.head(T-1)/2) % (ht.tail(T-1) - phi*ht.head(T-1)));
+
+      normalizer = arma::exp(-h/2);
+      normalizer.head(T-1) /= sqrt(1-pow(rho, 2));
+      // X has already been copied to X_reg
+      std::copy(X.cbegin(), X.cend(), X_reg.begin());  // important!
+      X_reg.each_col() %= normalizer;
+      y_reg %= normalizer;
+
+      // cholesky factor of posterior precision matrix
+      postprecchol = arma::chol(X_reg.t() * X_reg + priorbetaprec);
+
+      // inverse cholesky factor of posterior precision matrix 
+      postpreccholinv = arma::inv(arma::trimatu(postprecchol));
+
+      // posterior covariance matrix and posterior mean vector
+      postcov = postpreccholinv * postpreccholinv.t();
+      postmean = postcov * (X_reg.t() * y_reg + priorbetaprec * priorbetamean);
+
+      armadraw.imbue([]() -> double {return R::rnorm(0, 1);});  // equivalent to armadraw = rnorm(p); but I don't know if rnorm creates a vector
+
+      // posterior betas
+      beta = postmean + postpreccholinv * armadraw;
+    }
+
+    // store draws
+    if ((i >= 1) && !thinpara_round) {
+      params.at(i/thinpara-1, 0) = mu;
+      params.at(i/thinpara-1, 1) = phi;
+      params.at(i/thinpara-1, 2) = sqrt(sigma2);
+      params.at(i/thinpara-1, 3) = rho;
+      if (regression) {
+        betas.row(i/thinpara-1) = beta.t();
+      }
+    }
+    if ((i >= 1) && !thinlatent_round) {
+      for (int volind = 0, thincol = thintime-1; thincol < int(h.size()); volind++, thincol += thintime) {
+        latent.at(i/thinlatent-1, volind) = h[thincol];
+      }
+    }
   }
-  BT11 = 1/(tmp1+1/Bsigma);
-  bT1 = BT11*tmp2; 
-//  REprintf("old: %f, new: mean %f and sd %f\n", sigma, bT1, sqrt(BT11));
-  sigma = as<double>(rnorm(1, bT1, sqrt(BT11)));
 
-  // TODO: check w.r.t. sign of sigma (low priority, 3 block is
-  // practically useless anyway if dontupdatemu==false)
-  if (!dontupdatemu) {
-  // second, draw mu from the full conditional posterior:
-  tmp1 = 0; 
-  tmp2 = 0; 
-  for (int j = 0; j < T; j++) {
-   tmp1 += mix_varinv[r[j]];
-   tmp2 += (data[j]-mix_mean[r[j]]-sigma*h[j])*mix_varinv[r[j]];
-  }
-  BT22 = 1/(tmp1+1/Bmu);
-  bT2 = BT22*(tmp2 + bmu/Bmu);
-//  REprintf("old: %f, new: mean %f and sd %f\n\n", mu, bT2, sqrt(BT22));
-  mu = as<double>(Rcpp::rnorm(1, bT2, sqrt(BT22)));
-  }
+  if (verbose) progressbar_finish(N);  // finalize progress bar
 
- } else {  // Gibbs-sample mu and sigma jointly (regression) 
-  BT11 = 1/Bmu;
-  BT12 = 0;
-  BT22 = 1/Bsigma;
-  bT1 = 0;
-  bT2 = bmu/Bmu;
-
-  for (int j = 0; j < T; j++) {
-   tmp1 = mix_varinv[r[j]];
-   tmp2 = (data[j]-mix_mean[r[j]])*tmp1;
-   tmp3 = h[j]*tmp1;
-   BT11 += tmp1;
-   BT12 -= tmp3;
-   BT22 += h[j]*tmp3;
-   bT1 += h[j]*tmp2;
-   bT2 += tmp2;
-  }
-
-  tmp = BT11*BT22-BT12*BT12;
-  BT11 /= tmp;
-  BT12 /= tmp;
-  BT22 /= tmp;
-
-  tmp = bT1;
-  bT1 = BT11*tmp + BT12*bT2;
-  bT2 = BT12*tmp + BT22*bT2;
- 
-  chol11 = sqrt(BT11);
-  chol12 = (BT12/chol11);
-  chol22 = sqrt(BT22-chol12*chol12);
- 
-  innov = rnorm(2);
-  sigma = bT1 + chol11*innov[0];
-  mu = bT2 + chol12*innov[0] + chol22*innov[1];
- }
-
-
- // Sampling phi: find posterior mean muT and posterior variance sigma2T
- 
- sumtmp1 = h0*h[0];
- sumtmp2 = h0*h0;
- for (int j = 0; j < T-1; j++) {
-  sumtmp1 += h[j]*h[j+1];
-  sumtmp2 += h[j]*h[j];
- }
- tmpmean = sumtmp1/sumtmp2;
- tmpsd = 1/sqrt(sumtmp2);
-
- // actual sampling
- if (truncnormal) {  // draw from truncated normal via inversion method
-  quant = Rcpp::pnorm(Rcpp::NumericVector::create(-1,1), tmpmean, tmpsd);
-  phi_prop = (Rcpp::qnorm((quant[0] + Rcpp::runif(1)*(quant[1]-quant[0])),
-                          tmpmean, tmpsd))[0];
- }
- else {  // draw from normal and reject (return) if outside
-  phi_prop = (Rcpp::rnorm(1, tmpmean, tmpsd))[0]; 
-  if ((phi_prop >= 1) || (phi_prop <= -1)) { // outside the unit sphere
-   Rcpp::NumericVector ret = Rcpp::NumericVector::create(mu, phi, fabs(sigma));
-   return ret;
-  }
- }
- 
- // now for the MH step, acceptance prob expR
- if (priorlatent0 < .0) { // only needed if prior of ho depends on phi
-  expR  = exp(logdnorm(h0, 0, 1/sqrt(1-phi_prop*phi_prop))
-            - logdnorm(h0, 0, 1/sqrt(1-phi*phi)));
- } else expR = 1;
- expR *= propBeta((phi_prop+1)/2, (phi+1)/2, a0, b0);
- // ^^note that factor 1/2 from transformation of densities cancels
-
- // accept/reject
- if (Rcpp::as<double>(Rcpp::runif(1)) < expR) phi = phi_prop;
-
- Rcpp::NumericVector ret = Rcpp::NumericVector::create(mu, phi, fabs(sigma));
- return ret;
+  return List::create(
+      _["para"] = params,
+      _["latent"] = latent,
+      _["beta"] = betas);
 }
+

@@ -1,47 +1,63 @@
 #ifndef _SAMPLER_H_
 #define _SAMPLER_H_
 
-// Main sampling steps and helper functions
-
 #include <RcppArmadillo.h>
-#define COMPILING_STOCHVOL
-#include <update.h>  // this header declares update
-                     // (which is also available to other packages)
-#include "auxmix.h"
-#include "progutils.h"
-#include "densities.h"
 
-// "update" is declared in /inst/include/update.h
+Rcpp::List svsample_cpp(
+    const arma::vec& y_in,
+    const int draws,
+    const int burnin,
+    const arma::mat& X_in,
+    const double bmu,
+    const double Bmu,
+    const double a0,
+    const double b0,
+    const double Bsigma,
+    const int thin,
+    const int timethin,
+    const Rcpp::List& startpara_in,
+    const arma::vec& startvol_in,
+    const bool keeptau,
+    const bool quiet,
+    const int para,
+    const int MHsteps,
+    const double B011,
+    const double B022,
+    const double mhcontrol,
+    const bool gammaprior,
+    const bool truncnormal,
+    const double offset,
+    const bool dontupdatemu,
+    const arma::vec& priordf_in,
+    const arma::vec& priorbeta_in,
+    const double priorlatent0);
 
-// Main sampler (as called from R):
-RcppExport SEXP sampler(const SEXP, const SEXP, const SEXP,
-  const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
-  const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
-  const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
-  const SEXP, const SEXP, const SEXP, const SEXP, const SEXP,
-  const SEXP, const SEXP, const SEXP, const SEXP);
+Rcpp::List svlsample_cpp (
+    const arma::vec& y,
+    const int draws,
+    const int burnin,
+    const arma::mat& X,
+    const int thinpara,
+    const int thinlatent,
+    const int thintime,
+    const Rcpp::List& theta_init,
+    const arma::vec& h_init,
+    const double prior_phi_a,
+    const double prior_phi_b,
+    const double prior_rho_a,
+    const double prior_rho_b,
+    const double prior_sigma2_shape,
+    const double prior_sigma2_rate,
+    const double prior_mu_mu,
+    const double prior_mu_sigma,
+    const double prior_beta_mu,
+    const double prior_beta_sigma,
+    const bool verbose,
+    const double offset,
+    const double stdev,
+    const bool gammaprior,
+    const bool correct,
+    const Rcpp::CharacterVector& strategy);
 
-// Step (b): sample mu, phi, sigma - __CENTERED__ version:
-Rcpp::NumericVector regressionCentered(
-       double h0, const Rcpp::NumericVector &h,
-       double mu, double phi, double sigma,
-       double C0, double cT, double Bsigma,
-       double a0, double b0,
-       double bmu, double Bmu,
-       double B011inv, double B022inv,
-       bool gammaprior, bool truncnormal,
-       double MHcontrol, int MHsteps,
-       const bool dontupdatemu, const double priorlatent0);
+#endif  // _SAMPLER_H_
 
-// Step (b): sample mu, phi, sigma - __NONCENTERED__ version:
-Rcpp::NumericVector regressionNoncentered(
-       const Rcpp::NumericVector &data,
-       double h0, const Rcpp::NumericVector &h,
-       const int * const r,
-       double mu, double phi, double sigma,
-       double Bsigma, double a0, double b0,
-       double bmu, double Bmu,
-       bool truncnormal, int MHsteps,
-       const bool dontupdatemu, const double priorlatent0);
-
-#endif
