@@ -177,7 +177,7 @@ paratraceplot <- function(x, mar = c(1.9, 1.9, 1.9, .5), mgp = c(2, .6, 0), simo
   for (i in 1:ncol(x$para)) {
     parastring <- colnames(x$para)[i]
     mytraceplot(x$para[,parastring], xlab="", mgp = mgp,
-                main=paste("Trace of ", paranames[parastring], " (thinning = ", x$thinning$para,")", sep=''), ...)
+                main=paste("Trace of ", paranames[parastring], " (thin = ", x$thinning$para,")", sep=''), ...)
     if (sim && parastring %in% names(simobj$para)) {
       abline(h = simobj$para[[parastring]], col = 3, lty = 2)
     }
@@ -262,6 +262,7 @@ volplot <- function(x, forecast = 0, dates = NULL, show0 = FALSE,
                     mar = c(1.9, 1.9, 1.9, .5), mgp = c(2, .6, 0), simobj = NULL,
                     newdata = NULL, ...) {
   if (!inherits(x, "svdraws")) stop("This function expects an 'svdraws' or an 'svldraws' object.")
+  if (x$thinning$time != "all") stop("This function requires that all volatilities have been stored during sampling.")
   if (!is.null(simobj)) {
     if (!inherits(simobj, "svsim")) stop("If provided, simobj must be an 'svsim' object.")
     sim <- TRUE
@@ -279,13 +280,9 @@ volplot <- function(x, forecast = 0, dates = NULL, show0 = FALSE,
   if (is.null(forecastlty)) forecastlty <- 2
 
   if (inherits(forecast, "svpredict") || (is.numeric(forecast) && length(forecast) == 1 && all(forecast != 0))) { # also draw future values
-    thintime <- x$thinning$time
-
-    if (thintime != 1) {
-      lasth <- as.integer(gsub("h_", "", dimnames(x$latent)[[2]][dim(x$latent)[2]]))
-      if (length(x$y) > lasth) {  # should never happen
-        warning(paste("Thinning for time 'thintime' has not been set to one during sampling. This means we are forecasting conditional on h_", lasth, " and not on h_", length(x$y), ".", sep=''))
-      }
+    lasth <- as.integer(gsub("h_", "", dimnames(x$latent)[[2]][dim(x$latent)[2]]))
+    if (length(x$y) > lasth) {  # should never happen
+      stop("The last log variance, h_n, has not been stored during sampling. Aborting.")
     }
 
     if(is.numeric(forecast) && length(forecast) == 1 && all(forecast >= 1)) {
@@ -300,16 +297,12 @@ volplot <- function(x, forecast = 0, dates = NULL, show0 = FALSE,
     volpred <- forecast$h
     futlen <- NCOL(volpred)
 
-    xs <- matrix(rep(seq(timelen, timelen + futlen/thintime, len=futlen+1), nvolquants), nrow=futlen+1)
+    xs <- matrix(rep(seq(timelen, timelen + futlen, len=futlen+1), nvolquants), nrow=futlen+1)
     quants <- as.numeric(gsub("%", "", dimnames(volquants)[[1]]))/100
     ys <- rbind(volquants[,timelen], t(matrix(apply(100*exp(volpred/2), 2, quantile, quants), nrow=nvolquants)))
 
-    if (futlen/thintime > .01*timelen) {  # increase xlim to give space for forecast
-      if (thintime == 1) {
-        xlim <- c(0, timelen+futlen/thintime)
-      } else {
-        xlim <- c(1, timelen+futlen/thintime)
-      }
+    if (futlen > .01*timelen) {  # increase xlim to give space for forecast
+      xlim <- c(0, timelen + futlen)
     } else {
       xlim <- NULL
     }
@@ -337,8 +330,7 @@ volplot <- function(x, forecast = 0, dates = NULL, show0 = FALSE,
   ax <- axis(1, tick=FALSE, labels=FALSE)  # just automagic axis ticks, don't draw yet
 
   if (show0) { # also draw latent0:
-    thintime <- x$thin$time
-    xs <- matrix(rep(c(1-1/thintime,1), nvolquants), nrow=2)
+    xs <- matrix(rep(c(0, 1), nvolquants), nrow=2)
     where <- grep("%", names(x$summary$latent0))
     ys <- rbind(100*exp(x$summary$latent0[where]/2), volquants[,1])
     for (i in 1:nvolquants) lines(xs[,i], ys[,i], lty=forecastlty, col=cols[i])
@@ -474,14 +466,18 @@ plot.svdraws <- function(x, forecast = NULL, dates = NULL,
 			 mar = c(1.9, 1.9, 1.7, .5), mgp = c(2, .6, 0),
 			 simobj = NULL, newdata = NULL, ...) {
   oldpar <- par(mfrow=c(1,1))
-  if (ncol(x$para) == 4) {
-    layout(matrix(c(1, 1, 1, 1, 2, 2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10), 4, byrow = TRUE))
-  } else {
-    layout(matrix(c(1, 1, 1, 2, 3, 4, 5, 6, 7), 3, byrow = TRUE))
+  if (x$thinning$time == "all") {
+    if (ncol(x$para) == 4) {
+      layout(matrix(c(1, 1, 1, 1, 2, 2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10), 4, byrow = TRUE))
+    } else {
+      layout(matrix(c(1, 1, 1, 2, 3, 4, 5, 6, 7), 3, byrow = TRUE))
+    }
+    volplot(x, dates = dates, show0 = show0, forecast = forecast,
+            forecastlty = forecastlty, col = col, tcl = tcl, mar = mar,
+            mgp = mgp, simobj = simobj, newdata = newdata, ...)
+  } else {  # don't plot volatility
+    layout(matrix(c(1, 2, 3, 4, 5, 6), 2, byrow = TRUE))
   }
-  volplot(x, dates = dates, show0 = show0, forecast = forecast,
-          forecastlty = forecastlty, col = col, tcl = tcl, mar = mar,
-          mgp = mgp, simobj = simobj, newdata = newdata, ...)
   paratraceplot(x, mar = mar, mgp = mgp, simobj = simobj, ...)
   paradensplot(x, showobs = showobs, showprior = showprior,
                showxlab = FALSE, mar = mar, mgp = mgp, simobj = simobj, ...)
@@ -497,10 +493,14 @@ plot.svldraws <- function (x, forecast = NULL, dates = NULL,
 			 mar = c(1.9, 1.9, 1.7, .5), mgp = c(2, .6, 0),
 			 simobj = NULL, newdata = NULL, ...) {
   oldpar <- par(mfrow=c(1,1))
-  layout(matrix(c(1, 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9), ncol=4, byrow = TRUE))
-  volplot(x, dates = dates, show0 = show0, forecast = forecast,
-          forecastlty = forecastlty, col = col, tcl = tcl, mar = mar,
-          mgp = mgp, simobj = simobj, newdata = newdata, ...)
+  if (x$thinning$time == "all") {
+    layout(matrix(c(1, 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9), ncol=4, byrow = TRUE))
+    volplot(x, dates = dates, show0 = show0, forecast = forecast,
+            forecastlty = forecastlty, col = col, tcl = tcl, mar = mar,
+            mgp = mgp, simobj = simobj, newdata = newdata, ...)
+  } else {  # don't plot volatility
+    layout(matrix(c(1, 2, 3, 4, 5, 6, 7, 8), 2, byrow = TRUE))
+  }
   paratraceplot(x, mar = mar, mgp = mgp, simobj = simobj, ...)
   paradensplot(x, showobs = showobs, showprior = showprior,
                showxlab = FALSE, mar = mar, mgp = mgp, simobj = simobj, ...)
