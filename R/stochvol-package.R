@@ -1,4 +1,25 @@
-
+#  #####################################################################################
+#  R package stochvol by
+#     Gregor Kastner Copyright (C) 2013-2020
+#     Darjus Hosszejni Copyright (C) 2019-2020
+#  
+#  This file is part of the R package stochvol: Efficient Bayesian
+#  Inference for Stochastic Volatility Models.
+#  
+#  The R package stochvol is free software: you can redistribute it
+#  and/or modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation, either version 2 or
+#  any later version of the License.
+#  
+#  The R package stochvol is distributed in the hope that it will be
+#  useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+#  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+#  General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with the R package stochvol. If that is not the case, please
+#  refer to <http://www.gnu.org/licenses/>.
+#  #####################################################################################
 
 #' Euro exchange rate data
 #' 
@@ -22,40 +43,6 @@
 #' }
 #' 
 NULL
-
-
-
-
-
-#' Common Extractors for 'svdraws' Objects
-#' 
-#' Some simple extractors returning the corresponding element of an
-#' \code{svdraws} object.
-#' 
-#' 
-#' @name extractors
-#' @aliases para latent latent0 priors thinning runtime
-#' @param x \code{svdraws} object.
-#' @return The return value depends on the actual funtion:
-#' \item{para(x)}{extracts the parameter draws and returns them as an
-#' \code{mcmc} object.}
-#' \item{latent(x)}{extracts the latent contemporaneous
-#' log-volatility draws and returns them as an \code{mcmc} object.}
-#' \item{latent0(x)}{extracts the latent initial log-volatility draws and
-#' returns as an \code{mcmc} object.}
-#' \item{priors(x)}{extracts the prior
-#' parameters used and returns them in a \code{list}.}
-#' \item{thinning(x)}{extracts the thinning parameters used and returns them in
-#' a \code{list}.}
-#' \item{runtime(x)}{extracts the runtime and returns it as a
-#' \code{proc_time} object.}
-#' @author Gregor Kastner \email{gregor.kastner@@wu.ac.at}
-#' @keywords utilities
-NULL
-
-
-
-
 
 #' Efficient Bayesian Inference for Stochastic Volatility (SV) Models
 #' 
@@ -84,9 +71,11 @@ NULL
 #' @useDynLib stochvol, .registration = TRUE
 #' @importFrom utils tail head flush.console
 #' @importFrom graphics plot par hist mtext lines title matplot points abline layout plot.default axis boxplot
-#' @importFrom stats cov rt rnorm sd IQR density time lowess dnorm dbeta dgamma dunif qnorm qt ppoints ts.plot median quantile predict plot.ts qqline qqnorm qqplot
+#' @importFrom grDevices col2rgb rgb
+#' @importFrom stats cov rt rgamma rnorm sd IQR density time lowess dnorm dbeta dgamma dexp qnorm qt ppoints ts.plot median quantile predict plot.ts qqline qqnorm qqplot coefficients lm
 #' @importFrom coda mcmc nvar niter varnames traceplot mcmc.list nvar nchain effectiveSize mcpar
 #' @importFrom Rcpp sourceCpp
+#' @importFrom parallel parLapply stopCluster clusterSetRNGStream makePSOCKcluster mclapply makeCluster clusterExport clusterEvalQ
 #' @note This package is currently in active development. Your comments,
 #' suggestions and requests are warmly welcome!
 #' @author Gregor Kastner \email{gregor.kastner@@wu.ac.at}, Darjus Hosszejni \email{darjus.hosszejni@@wu.ac.at}
@@ -106,36 +95,6 @@ NULL
 #' Statistics}, \bold{20}(3), 531--570,
 #' \url{http://dx.doi.org/10.1198/jcgs.2011.203main}.
 #' @keywords package models ts
-#' @examples
-#' 
-#' ## Simulate a highly persistent SV process 
-#' sim <- svsim(500, mu = -10, phi = 0.99, sigma = 0.2)
-#' 
-#' ## Obtain 4000 draws from the sampler (that's too little!)
-#' draws <- svsample(sim$y, draws = 4000, burnin = 100, priormu = c(-10, 1),
-#'                   priorphi = c(20, 1.2), priorsigma = 0.2)
-#' 
-#' ## Predict 20 days ahead
-#' fore <- predict(draws, 20)
-#' 
-#' ## plot the results
-#' plot(draws, forecast = fore)
-#' 
-#' \dontrun{
-#' ## Simulate an SV process with leverage
-#' sim <- svsim(500, mu = -10, phi = 0.95, sigma = 0.2, rho=-0.5)
-#' 
-#' ## Obtain 8000 draws from the sampler (that's too little!)
-#' draws <- svlsample(sim$y, draws = 4000, burnin = 3000, priormu = c(-10, 1),
-#'                    priorphi = c(20, 1.2), priorsigma = 0.2,
-#'                    priorrho = c(1, 1))
-#' 
-#' ## Predict 20 days ahead
-#' fore <- predict(draws, 20)
-#' 
-#' ## plot the results
-#' plot(draws, forecast = fore)
-#' }
-#' 
+#' @example inst/examples/stochvol-package.R
 NULL
 

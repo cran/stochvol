@@ -3,26 +3,152 @@
 \name{svsample}
 \alias{svsample}
 \alias{svtsample}
+\alias{svlsample}
+\alias{svtlsample}
+\alias{svsample2}
 \title{Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility (SV)
 Model}
 \usage{
-svsample(y, draws = 10000, burnin = 1000, designmatrix = NA,
-  priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
-  priornu = NA, priorbeta = c(0, 10000), priorlatent0 = "stationary",
-  thinpara = 1, thinlatent = 1, keeptime = "all", thintime = NULL,
-  keeptau = FALSE, quiet = FALSE, startpara, startlatent, expert, ...)
+svsample(
+  y,
+  draws = 10000,
+  burnin = 1000,
+  designmatrix = NA,
+  priormu = c(0, 100),
+  priorphi = c(5, 1.5),
+  priorsigma = 1,
+  priornu = 0,
+  priorrho = NA,
+  priorbeta = c(0, 10000),
+  priorlatent0 = "stationary",
+  priorspec = NULL,
+  thin = 1,
+  thinpara = thin,
+  thinlatent = thin,
+  keeptime = "all",
+  quiet = FALSE,
+  startpara = NULL,
+  startlatent = NULL,
+  parallel = c("no", "multicore", "snow"),
+  n_cpus = 1L,
+  cl = NULL,
+  n_chains = 1L,
+  print_progress = "automatic",
+  expert = NULL,
+  ...
+)
 
-svtsample(y, draws = 10000, burnin = 1000, designmatrix = NA,
-  priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
-  priornu = c(2, 50), priorbeta = c(0, 10000),
-  priorlatent0 = "stationary", thinpara = 1, thinlatent = 1,
-  keeptime = "all", thintime = NULL, keeptau = FALSE,
-  quiet = FALSE, startpara, startlatent, expert, ...)
+svtsample(
+  y,
+  draws = 10000,
+  burnin = 1000,
+  designmatrix = NA,
+  priormu = c(0, 100),
+  priorphi = c(5, 1.5),
+  priorsigma = 1,
+  priornu = 0.1,
+  priorrho = NA,
+  priorbeta = c(0, 10000),
+  priorlatent0 = "stationary",
+  priorspec = NULL,
+  thin = 1,
+  thinpara = thin,
+  thinlatent = thin,
+  keeptime = "all",
+  quiet = FALSE,
+  startpara = NULL,
+  startlatent = NULL,
+  parallel = c("no", "multicore", "snow"),
+  n_cpus = 1L,
+  cl = NULL,
+  n_chains = 1L,
+  print_progress = "automatic",
+  expert = NULL,
+  ...
+)
+
+svlsample(
+  y,
+  draws = 20000,
+  burnin = 2000,
+  designmatrix = NA,
+  priormu = c(0, 100),
+  priorphi = c(5, 1.5),
+  priorsigma = 1,
+  priornu = 0,
+  priorrho = c(4, 4),
+  priorbeta = c(0, 10000),
+  priorlatent0 = "stationary",
+  priorspec = NULL,
+  thin = 1,
+  thinpara = thin,
+  thinlatent = thin,
+  keeptime = "all",
+  quiet = FALSE,
+  startpara = NULL,
+  startlatent = NULL,
+  parallel = c("no", "multicore", "snow"),
+  n_cpus = 1L,
+  cl = NULL,
+  n_chains = 1L,
+  print_progress = "automatic",
+  expert = NULL,
+  ...
+)
+
+svtlsample(
+  y,
+  draws = 20000,
+  burnin = 2000,
+  designmatrix = NA,
+  priormu = c(0, 100),
+  priorphi = c(5, 1.5),
+  priorsigma = 1,
+  priornu = 0.1,
+  priorrho = c(4, 4),
+  priorbeta = c(0, 10000),
+  priorlatent0 = "stationary",
+  priorspec = NULL,
+  thin = 1,
+  thinpara = thin,
+  thinlatent = thin,
+  keeptime = "all",
+  quiet = FALSE,
+  startpara = NULL,
+  startlatent = NULL,
+  parallel = c("no", "multicore", "snow"),
+  n_cpus = 1L,
+  cl = NULL,
+  n_chains = 1L,
+  print_progress = "automatic",
+  expert = NULL,
+  ...
+)
+
+svsample2(
+  y,
+  draws = 10000,
+  burnin = 1000,
+  designmatrix = NA,
+  priormu = c(0, 100),
+  priorphi = c(5, 1.5),
+  priorsigma = 1,
+  priornu = 0,
+  priorrho = NA,
+  priorbeta = c(0, 10000),
+  priorlatent0 = "stationary",
+  thinpara = 1,
+  thinlatent = 1,
+  keeptime = "all",
+  quiet = FALSE,
+  startpara = NULL,
+  startlatent = NULL
+)
 }
 \arguments{
 \item{y}{numeric vector containing the data (usually log-returns), which
 must not contain zeros. Alternatively, \code{y} can be an \code{svsim}
-object. In this case, the returns will be extracted and a warning is thrown.}
+object. In this case, the returns will be extracted and a message is signalled.}
 
 \item{draws}{single number greater or equal to 1, indicating the number of
 draws after burn-in (see below). Will be automatically coerced to integer.
@@ -61,12 +187,16 @@ chisq(df = 1)}. The default value is \code{1}, which constitutes a
 reasonably vague prior for many common exchange rate datasets, stock returns
 and the like.}
 
-\item{priornu}{numeric vector of length 2 (or \code{NA}), indicating the
-lower and upper bounds for the uniform prior distribution of the parameter
+\item{priornu}{single non-negative number, indicating the rate parameter
+for the exponential prior distribution of the parameter; can be \code{Inf}
 \code{nu}, the degrees-of-freedom parameter of the conditional innovations
-t-distribution. The default value is \code{NA}, fixing the
+t-distribution. The default value is \code{0}, fixing the
 degrees-of-freedom to infinity. This corresponds to conditional standard
 normal innovations, the pre-1.1.0 behavior of \pkg{stochvol}.}
+
+\item{priorrho}{either \code{NA} for the no-leverage case or a numeric
+vector of length 2 that specify the beta prior distribution for
+\code{(rho+1)/2}}
 
 \item{priorbeta}{numeric vector of length 2, indicating the mean and
 standard deviation of the Gaussian prior for the regression parameters. The
@@ -80,25 +210,26 @@ distribution of the latent AR(1)-process is used as the prior for the
 initial log-volatility \code{h_0}. When \code{priorlatent0} is equal to a
 number \eqn{B}, we have \eqn{h_0 \sim N(\mu, B\sigma^2)} a priori.}
 
-\item{thinpara}{single number greater or equal to 1, coercible to integer.
-Every \code{thinpara}th parameter draw is kept and returned. The default
+\item{priorspec}{in case one needs different prior distributions than the
+ones specified by \code{priormu}, \code{...}, \code{priorrho}, a \code{priorspec}
+object can be supplied here. A smart constructor for this usecase is
+\link{specify_priors}.}
+
+\item{thin}{single number greater or equal to 1, coercible to integer.
+Every \code{thinpara}th parameter and latent draw is kept and returned. The default
 value is 1, corresponding to no thinning of the parameter draws i.e. every
 draw is stored.}
 
+\item{thinpara}{single number greater or equal to 1, coercible to integer.
+Every \code{thinpara}th parameter draw is kept and returned. The default
+value is \code{thin}.}
+
 \item{thinlatent}{single number greater or equal to 1, coercible to integer.
 Every \code{thinlatent}th latent variable draw is kept and returned. The
-default value is 1, corresponding to no thinning of the latent variable
-draws, i.e. every draw is kept.}
+default value is \code{thin}}
 
-\item{keeptime}{Either 'all' (the default) or 'last'. Indicates which latent}
-
-\item{thintime}{\emph{Deprecated.} Use 'keeptime' instead.}
-
-\item{keeptau}{logical value indicating whether the 'variance inflation
-factors' should be stored (used for the sampler with conditional t
-innovations only). This may be useful to check at what point(s) in time the
-normal disturbance had to be 'upscaled' by a mixture factor and when the
-series behaved 'normally'.}
+\item{keeptime}{Either 'all' (the default) or 'last'. Indicates which latent
+volatility draws should be stored.}
 
 \item{quiet}{logical value indicating whether the progress bar and other
 informative output during sampling should be omitted. The default value is
@@ -109,51 +240,49 @@ for the parameter draws. If supplied, \code{startpara} must contain three
 elements named \code{mu}, \code{phi}, and \code{sigma}, where \code{mu} is
 an arbitrary numerical value, \code{phi} is a real number between \code{-1}
 and \code{1}, and \code{sigma} is a positive real number. Moreover, if
-\code{priornu} is not \code{NA}, \code{startpara} must also contain an
+\code{priornu} is not \code{0}, \code{startpara} must also contain an
 element named \code{nu} (the degrees of freedom parameter for the
-t-innovations). The default value is equal to the prior mean.}
+t-innovations). The default value is equal to the prior mean. 
+In case of parallel execution with \code{cl} provided, \code{startpara} can be a list of
+named lists that initialize the parallel chains.}
 
 \item{startlatent}{\emph{optional} vector of length \code{length(y)},
 containing the starting values for the latent log-volatility draws. The
-default value is \code{rep(-10, length(y))}.}
+default value is \code{rep(-10, length(y))}.
+In case of parallel execution with \code{cl} provided, \code{startlatent} can be a list of
+named lists that initialize the parallel chains.}
+
+\item{parallel}{\emph{optional} one of \code{"no"} (default), \code{"multicore"}, or \code{"snow"},
+indicating what type of parallellism is to be applied. Option
+\code{"multicore"} is not available on Windows.}
+
+\item{n_cpus}{\emph{optional} positive integer, the number of CPUs to be used in case of
+parallel computations. Defaults to \code{1L}. Ignored if parameter
+\code{cl} is supplied and \code{parallel != "snow"}.}
+
+\item{cl}{\emph{optional} so-called SNOW cluster object as implemented in package
+\code{parallel}. Ignored unless \code{parallel == "snow"}.}
+
+\item{n_chains}{\emph{optional} positive integer specifying the number of independent MCMC chains}
+
+\item{print_progress}{\emph{optional} one of \code{"automatic"}, \code{"progressbar"},
+or \code{"iteration"}, controls the output. Ignored if \code{quiet} is \code{TRUE}.}
 
 \item{expert}{\emph{optional} named list of expert parameters. For most
 applications, the default values probably work best. Interested users are
 referred to the literature provided in the References section. If
 \code{expert} is provided, it may contain the following named elements:
-
-\code{parameterization}: Character string equal to \code{"centered"},
-\code{"noncentered"}, \code{"GIS_C"}, or \code{"GIS_NC"}. Defaults to
-\code{"GIS_C"}.
-
-\code{mhcontrol}: Single numeric value controlling the proposal density of a
-Metropolis-Hastings (MH) update step when sampling \code{sigma}. If
-\code{mhcontrol} is smaller than 0, an independence proposal will be used,
-while values greater than zero control the stepsize of a log-random-walk
-proposal. Defaults to \code{-1}.
-
-\code{gammaprior}: Single logical value indicating whether a Gamma prior for
-\code{sigma^2} should be used. If set to \code{FALSE}, an Inverse Gamma
-prior is employed. Defaults to \code{TRUE}.
-
-\code{truncnormal}: Single logical value indicating whether a truncated
-Gaussian distribution should be used as proposal for draws of \code{phi}. If
-set to \code{FALSE}, a regular Gaussian prior is employed and the draw is
-immediately discarded when values outside the unit ball happen to be drawn.
-Defaults to \code{FALSE}.
-
-\code{mhsteps}: Either \code{1}, \code{2}, or \code{3}. Indicates the number
-of blocks used for drawing from the posterior of the parameters. Defaults to
-\code{2}.
-
-\code{proposalvar4sigmaphi}: Single positive number indicating the
-conditional prior variance of \code{sigma*phi} in the ridge \emph{proposal}
-density for sampling \code{(mu, phi)}. Defaults to \code{10^8}.
-
-\code{proposalvar4sigmatheta}: Single positive number indicating the
-conditional prior variance of \code{sigma*theta} in the ridge
-\emph{proposal} density for sampling \code{(mu, phi)}. Defaults to
-\code{10^12}.}
+\itemize{
+\item{interweave}{Logical value. If \code{TRUE} (the default),
+then ancillarity-sufficiency interweaving strategy (ASIS) is applied
+to improve on the sampling efficiency for the parameters.
+Otherwise one parameterization is used.}
+\item{correct_model_misspecification}{Logical value. If \code{FALSE}
+(the default), then auxiliary mixture sampling is used to sample the latent
+states. If \code{TRUE}, extra computations are made to correct for model
+misspecification either ex-post by reweighting or on-line using a
+Metropolis-Hastings step.}
+}}
 
 \item{\dots}{Any extra arguments will be forwarded to
 \code{\link{updatesummary}}, controlling the type of statistics calculated
@@ -161,25 +290,26 @@ for the posterior draws.}
 }
 \value{
 The value returned is a list object of class \code{svdraws} holding
-\item{para}{\code{mcmc} object containing the \emph{parameter} draws from
+\item{para}{\code{mcmc.list} object containing the \emph{parameter} draws from
 the posterior distribution.}
-\item{latent}{\code{mcmc} object containing the
+\item{latent}{\code{mcmc.list} object containing the
 \emph{latent instantaneous log-volatility} draws from the posterior
 distribution.}
-\item{latent0}{\code{mcmc} object containing the \emph{latent
+\item{latent0}{\code{mcmc.list} object containing the \emph{latent
 initial log-volatility} draws from the posterior distribution.}
-\item{tau}{\code{mcmc} object containing the \emph{latent variance inflation
+\item{tau}{\code{mcmc.list} object containing the \emph{latent variance inflation
 factors} for the sampler with conditional t-innovations \emph{(optional)}.}
-\item{beta}{\code{mcmc} object containing the \emph{regression coefficient}
+\item{beta}{\code{mcmc.list} object containing the \emph{regression coefficient}
 draws from the posterior distribution \emph{(optional)}.}
-\item{y}{the
-argument \code{y}.}
+\item{y}{the left hand side of the observation equation, usually
+the argument \code{y}. In case of an AR(\code{k}) specification, the
+first \code{k} elements are removed.}
 \item{runtime}{\code{proc_time} object containing the
 run time of the sampler.}
-\item{priors}{\code{list} containing the parameter
-values of the prior distribution, i.e. the arguments \code{priormu},
-\code{priorphi}, \code{priorsigma}, and potentially \code{priornu} and
-\code{priorbeta}.}
+\item{priors}{a \code{priorspec} object containing the parameter
+values of the prior distributions for \code{mu},
+\code{phi}, \code{sigma}, \code{nu}, \code{rho}, and
+\code{beta}s, and the variance of specification for \code{latent0}.}
 \item{thinning}{\code{list} containing the thinning
 parameters, i.e. the arguments \code{thinpara}, \code{thinlatent} and
 \code{keeptime}.}
@@ -199,12 +329,16 @@ distribution by calling \code{\link{volplot}}, \code{\link{traceplot}} and
 }
 \description{
 \code{svsample} simulates from the joint posterior distribution of the SV
-parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu}),
+parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu} and \code{rho}),
 along with the latent log-volatilities \code{h_0,...,h_n} and returns the
 MCMC draws. If a design matrix is provided, simple Bayesian regression can
 also be conducted.
 }
 \details{
+Functions \code{svtsample}, \code{svlsample}, and \code{svtlsample} are
+wrappers around \code{svsample} with convenient default values for the SV
+model with t-errors, leverage, and both t-errors and leverage, respectively.
+
 For details concerning the algorithm please see the paper by Kastner and
 Frühwirth-Schnatter (2014).
 }
@@ -213,21 +347,46 @@ If \code{y} contains zeros, you might want to consider de-meaning your
 returns or use \code{designmatrix = "ar0"}.
 }
 \examples{
+###############
+# Full examples
+###############
+
 # Example 1
 ## Simulate a short and highly persistent SV process 
 sim <- svsim(100, mu = -10, phi = 0.99, sigma = 0.2)
 
 ## Obtain 5000 draws from the sampler (that's not a lot)
-draws <- svsample(sim$y, draws = 5000, burnin = 100,
-		  priormu = c(-10, 1), priorphi = c(20, 1.5), priorsigma = 0.2)
+draws <-
+  svsample(sim, draws = 5000, burnin = 100,
+           priormu = c(-10, 1), priorphi = c(20, 1.5), priorsigma = 0.2)
 
 ## Check out the results
 summary(draws)
 plot(draws)
 
 
-\dontrun{
+\donttest{
 # Example 2
+## Simulate an asymmetric and conditionally heavy-tailed SV process
+sim <- svsim(150, mu = -10, phi = 0.96, sigma = 0.3, nu = 10, rho = -0.3)
+
+## Obtain 10000 draws from the sampler
+## Use more advanced prior settings
+## Run two parallel MCMC chains
+advanced_draws <-
+  svsample(sim, draws = 10000, burnin = 5000,
+           priorspec = specify_priors(mu = sv_normal(-10, 1),
+                                      sigma2 = sv_gamma(0.5, 2),
+                                      rho = sv_beta(4, 4),
+                                      nu = sv_constant(5)),
+           parallel = "snow", n_chains = 2, n_cpus = 2)
+
+## Check out the results
+summary(advanced_draws)
+plot(advanced_draws)
+
+
+# Example 3
 ## AR(1) structure for the mean
 data(exrates)
 len <- 3000
@@ -241,7 +400,7 @@ res <- svsample(y, designmatrix = "ar1")
 preddraws <- predict(res, steps = ahead)
 
 ## Calculate predictive quantiles
-predquants <- apply(preddraws$y, 2, quantile, c(.1, .5, .9))
+predquants <- apply(preddraws$y[[1]], 2, quantile, c(.1, .5, .9))
 
 ## Visualize
 expost <- tail(head(exrates$USD, len+ahead), ahead)
@@ -255,7 +414,7 @@ lines((length(y)+1):(length(y)+ahead), expost,
       col = 2)
 
 
-# Example 3
+# Example 4
 ## Predicting USD based on JPY and GBP in the mean
 data(exrates)
 len <- 3000
@@ -273,7 +432,7 @@ res <- svsample(logretUSD, designmatrix = regressors)
 predregressors <- cbind(1, as.matrix(logreturns[(len+1):(len+ahead), ]))
 preddraws <- predict(res, steps = ahead,
                      newdata = predregressors)
-predprice <- exrates[len+2, "USD"] * exp(t(apply(preddraws$y, 1, cumsum)))
+predprice <- exrates[len+2, "USD"] * exp(t(apply(preddraws$y[[1]], 1, cumsum)))
 
 ## Calculate predictive quantiles
 predquants <- apply(predprice, 2, quantile, c(.1, .5, .9))
@@ -290,6 +449,56 @@ for (i in 1:3) {
 lines(len:(len+ahead), c(tail(priceUSD, 1), expost),
       col = 2)
 }
+
+########################
+# Further short examples
+########################
+
+y <- svsim(50, nu = 10, rho = -0.1)$y
+
+# Supply initial values
+res <- svsample(y,
+                startpara = list(mu = -10, sigma = 1))
+
+\donttest{
+# Supply initial values for parallel chains
+res <- svsample(y,
+                startpara = list(list(mu = -10, sigma = 1),
+                                 list(mu = -11, sigma = .1, phi = 0.9),
+                                 list(mu = -9, sigma = .3, phi = 0.7)),
+                parallel = "snow", n_chains = 3, n_cpus = 2)
+
+# Parallel chains with with a pre-defined cluster object
+cl <- parallel::makeCluster(2, "PSOCK", outfile = NULL)  # print to console
+res <- svsample(y,
+                parallel = "snow", n_chains = 3, cl = cl)
+parallel::stopCluster(cl)
+}
+
+# Turn on correction for model misspecification
+## Since the approximate model is fast and it is working very
+##   well in practice, this is turned off by default
+res <- svsample(y,
+                expert = list(correct_model_misspecification = TRUE))
+print(res)
+
+\dontrun{
+# Parallel multicore chains (not available on Windows)
+res <- svsample(y, draws = 30000, burnin = 10000,
+                parallel = "multicore", n_chains = 3, n_cpus = 2)
+
+# Plot using a color palette
+palette(rainbow(coda::nchain(para(res))))
+plot(res)
+
+# Use functionality from package 'coda'
+## E.g. Geweke's convergence diagnostics
+coda::geweke.diag(para(res)[, c("mu", "phi", "sigma")])
+
+# Use functionality from package 'bayesplot'
+bayesplot::mcmc_pairs(res, pars = c("sigma", "mu", "phi", "h_0", "h_15"))
+}
+
 }
 \references{
 Kastner, G. and Frühwirth-Schnatter, S. (2014).
@@ -299,11 +508,7 @@ Data Analysis}, \bold{76}, 408--423,
 \url{http://dx.doi.org/10.1016/j.csda.2013.01.002}.
 }
 \seealso{
-\code{\link{svsim}}, \code{\link{svlsample}}, \code{\link{updatesummary}},
-\code{\link{predict.svdraws}}, \code{\link{plot.svdraws}}.
-}
-\author{
-Gregor Kastner \email{gregor.kastner@wu.ac.at}
+\code{\link{svsim}}, \code{\link{specify_priors}}
 }
 \keyword{models}
 \keyword{ts}

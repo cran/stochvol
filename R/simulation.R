@@ -1,3 +1,26 @@
+#  #####################################################################################
+#  R package stochvol by
+#     Gregor Kastner Copyright (C) 2013-2020
+#     Darjus Hosszejni Copyright (C) 2019-2020
+#  
+#  This file is part of the R package stochvol: Efficient Bayesian
+#  Inference for Stochastic Volatility Models.
+#  
+#  The R package stochvol is free software: you can redistribute it
+#  and/or modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation, either version 2 or
+#  any later version of the License.
+#  
+#  The R package stochvol is distributed in the hope that it will be
+#  useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+#  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+#  General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with the R package stochvol. If that is not the case, please
+#  refer to <http://www.gnu.org/licenses/>.
+#  #####################################################################################
+
 #' Simulating a Stochastic Volatility Process
 #' 
 #' \code{svsim} is used to produce realizations of a stochastic volatility (SV)
@@ -49,80 +72,71 @@
 #' @author Gregor Kastner \email{gregor.kastner@@wu.ac.at}
 #' @seealso \code{\link{svsample}}
 #' @keywords datagen ts
-#' @examples
-#' 
-#' ## Simulate a highly persistent SV process of length 500
-#' sim <- svsim(500, phi = 0.99, sigma = 0.1)
-#' 
-#' print(sim)
-#' summary(sim)
-#' plot(sim)
-#' 
-#' ## Simulate an SV process with leverage
-#' sim <- svsim(200, phi = 0.94, sigma = 0.15, rho = -0.6)
-#' 
-#' print(sim)
-#' summary(sim)
-#' plot(sim)
-#' 
-#' ## Simulate an SV process with conditionally heavy-tails
-#' sim <- svsim(250, phi = 0.91, sigma = 0.05, nu = 5)
-#' 
-#' print(sim)
-#' summary(sim)
-#' plot(sim)
+#' @example inst/examples/svsim.R
 #' @export
 svsim <- function(len, mu = -10, phi = 0.98, sigma = 0.2, nu = Inf, rho = 0) {
 
-  # Some error checking
-  if (any(is.na(len)) || !is.numeric(len) || length(len) != 1 || any(len < 1)) {
-    stop("Argument 'len' (length of simulated series) must be a single number >= 2.")
-  } else {
-    len <- as.integer(len)
-  }
+  name_len <- "length of simulated data set"
+  assert_numeric(len, name_len)
+  assert_single(len, name_len)
+  assert_ge(len, 2, name_len)
+  
+  name_mu <- "input parameter mu"
+  assert_numeric(mu, name_mu)
+  assert_single(mu, name_mu)
+  
+  name_phi <- "input parameter phi"
+  assert_numeric(phi, name_phi)
+  assert_single(phi, name_phi)
+  assert_gt(phi, -1, name_phi)
+  assert_lt(phi, 1, name_phi)
+  
+  name_sigma <- "input parameter sigma"
+  assert_numeric(sigma, name_sigma)
+  assert_single(sigma, name_sigma)
+  assert_positive(sigma, name_sigma)
+  
+  name_nu <- "input parameter nu"
+  assert_numeric(nu, name_nu)
+  assert_single(nu, name_nu)
+  assert_gt(nu, 2, name_nu)
+  
+  name_rho <- "input parameter rho"
+  assert_numeric(rho, name_rho)
+  assert_single(rho, name_rho)
+  assert_gt(rho, -1, name_rho)
+  assert_lt(rho, 1, name_rho)
+  
+  len <- as.integer(len)
 
-  if (!is.numeric(mu) || length(mu) != 1) {
-    stop("Argument 'mu' (level of latent variable) must be a single number.")
-  }
-
-  if (!is.numeric(phi) || length(phi) != 1) {
-    stop("Argument 'phi' (persistence of latent variable) must be a single number.")
-  }
-
-  if (!is.numeric(sigma) || length(sigma) != 1 || sigma <= 0) {
-    stop("Argument 'sigma' (volatility of latent variable) must be a single number > 0.")
-  }
-
-  if (!is.numeric(nu) || length(nu) != 1 || nu <= 2) {
-    stop("Argument 'nu' (degrees of freedom for the conditional error) must be a single number > 2.")
-  }
-
-  if (!is.numeric(rho) || length(rho) != 1 || abs(rho) >= 1) {
-    stop("Argument 'rho' (correlation between the observations and the volatility increments) must be a single number between -1 and 1 exclusive.")
-  }
-
-  h <- rep(as.numeric(NA), len)
+  h <- rep_len(as.numeric(NA), length.out=len)
   h0 <- rnorm(1, mean=mu, sd=sigma/sqrt(1-phi^2))
-  standardizer <- if (is.finite(nu)) sqrt((nu-2)/nu) else 1
-  eps <- rt(len, df = nu)
-  eta <- rho * eps * standardizer + sqrt(1-rho^2) * rnorm(len)
+  tau <- if (is.finite(nu)) {
+    1/rgamma(len, shape=nu/2, rate=nu/2-1)
+  } else {
+    rep_len(1, length.out=len)
+  }
+  eta <- rnorm(len)
+  eps <- rho*eta + sqrt(1-rho^2)*rnorm(len)
 
   # simulate w/ simple loop
   h[1] <- mu + phi*(h0-mu) + sigma*rnorm(1)  # same marginal distribution as h0
   for (i in seq_len(len-1)) {
     h[i+1] <- mu + phi*(h[i]-mu) + sigma*eta[i]
   }
-  y <- exp(h / 2) * eps  # "log-returns"
+  y <- exp(h/2) * sqrt(tau) * eps  # "log-returns"
 
   ret <- list(y = y,
-              vol = exp(h/2),
+              vol0 = exp(h0/2),
+              vol = exp(h/2) * sqrt(tau),
               para = list(mu = mu,
                           phi = phi,
-                          sigma = sigma))
-  ret$vol0 <- exp(h0/2)
-  ret$para$rho <- rho
-  ret$para$nu <- nu
-  ret$correction <- 1/standardizer  # TODO discuss with Gregor
+                          sigma = sigma,
+                          rho = rho,
+                          nu = nu),
+              latent = h,
+              latent0 = h0,
+              tau = tau)
   class(ret) <- "svsim"
   ret
 }
@@ -132,9 +146,9 @@ print.svsim <- function(x, ...) {
   cat("\nSimulated time series consisting of ", length(x$y), " observations.\n\n",
       "Parameters: level of latent variable                  mu = ", x$para$mu, "\n",
       "            persistence of latent variable           phi = ", x$para$phi, "\n",
-      "            standard deviation of latent variable  sigma = ", x$para$sigma, "\n", sep="")
-  if ("nu" %in% names(x$para)) cat("            degrees of freedom parameter              nu =", x$para$nu, "\n")
-  if ("rho" %in% names(x$para)) cat("            leverage effect parameter                rho =", x$para$rho, "\n")
+      "            standard deviation of latent variable  sigma = ", x$para$sigma, "\n",
+      "            degrees of freedom parameter              nu =", x$para$nu, "\n",
+      "            leverage effect parameter                rho =", x$para$rho, "\n", sep="")
   cat("\nSimulated initial volatility:", x$vol0*x$correction, "\n")
   cat("\nSimulated volatilities:\n")
   print(x$vol*x$correction, ...)
@@ -147,7 +161,7 @@ plot.svsim <- function(x, mar = c(3, 2, 2, 1), mgp = c(1.8, .6, 0), ...) {
   op <- par(mfrow = c(2, 1), mar = mar, mgp = mgp)
   plot.ts(100*x$y, ylab = "", ...)
   mtext("Simulated data: 'log-returns' (in %)", cex = 1.2, line = .4, font = 2)
-  plot.ts(100*x$vol*x$correction, ylab = "", ...)
+  plot.ts(100*x$vol, ylab = "", ...)
   mtext("Simulated volatilities (in %)", cex = 1.2, line = .4, font = 2)
   par(op)
 }
@@ -159,10 +173,8 @@ summary.svsim <- function(object, ...) {
   ret$len <- length(object$y)
   ret$para <- object$para
   ret$vol <- summary(100*object$vol)
-  ret$vol.corrected <- summary(100*object$vol*object$correction)
   ret$y <- summary(100*object$y)
   ret$vol0 <- 100*object$vol0
-  ret$vol0.corrected <- 100*object$vol0*object$correction
   ret
 }
 
@@ -176,9 +188,9 @@ print.summary.svsim  <- function(x, ...) {
       "\n            degrees of freedom parameter              nu = ", x$para$nu,
       "\n            leverage effect parameter                rho = ", x$para$rho, "\n", sep="")
   cat("\nSimulated initial volatility (in %): ")
-  cat(x$vol0.corrected, "\n")
+  cat(x$vol0, "\n")
   cat("\nSummary of simulated volatilities (in %):\n")
-  print(x$vol.corrected)
+  print(x$vol)
   cat("\nSummary of simulated data (in %):\n")
   print(x$y)
   invisible(x)

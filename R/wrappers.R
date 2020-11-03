@@ -1,21 +1,45 @@
-# R wrapper functions for the main MCMC loop
-
+#  #####################################################################################
+#  R package stochvol by
+#     Gregor Kastner Copyright (C) 2013-2020
+#     Darjus Hosszejni Copyright (C) 2019-2020
+#  
+#  This file is part of the R package stochvol: Efficient Bayesian
+#  Inference for Stochastic Volatility Models.
+#  
+#  The R package stochvol is free software: you can redistribute it
+#  and/or modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation, either version 2 or
+#  any later version of the License.
+#  
+#  The R package stochvol is distributed in the hope that it will be
+#  useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+#  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+#  General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with the R package stochvol. If that is not the case, please
+#  refer to <http://www.gnu.org/licenses/>.
+#  #####################################################################################
 
 #' Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility (SV)
 #' Model
 #' 
 #' \code{svsample} simulates from the joint posterior distribution of the SV
-#' parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu}),
+#' parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu} and \code{rho}),
 #' along with the latent log-volatilities \code{h_0,...,h_n} and returns the
 #' MCMC draws. If a design matrix is provided, simple Bayesian regression can
 #' also be conducted.
+#' 
+#' Functions \code{svtsample}, \code{svlsample}, and \code{svtlsample} are
+#' wrappers around \code{svsample} with convenient default values for the SV
+#' model with t-errors, leverage, and both t-errors and leverage, respectively.
 #' 
 #' For details concerning the algorithm please see the paper by Kastner and
 #' Frühwirth-Schnatter (2014).
 #' 
 #' @param y numeric vector containing the data (usually log-returns), which
 #' must not contain zeros. Alternatively, \code{y} can be an \code{svsim}
-#' object. In this case, the returns will be extracted and a warning is thrown.
+#' object. In this case, the returns will be extracted and a message is signalled.
 #' @param draws single number greater or equal to 1, indicating the number of
 #' draws after burn-in (see below). Will be automatically coerced to integer.
 #' The default value is 10000.
@@ -47,10 +71,10 @@
 #' chisq(df = 1)}. The default value is \code{1}, which constitutes a
 #' reasonably vague prior for many common exchange rate datasets, stock returns
 #' and the like.
-#' @param priornu numeric vector of length 2 (or \code{NA}), indicating the
-#' lower and upper bounds for the uniform prior distribution of the parameter
+#' @param priornu single non-negative number, indicating the rate parameter
+#' for the exponential prior distribution of the parameter; can be \code{Inf}
 #' \code{nu}, the degrees-of-freedom parameter of the conditional innovations
-#' t-distribution. The default value is \code{NA}, fixing the
+#' t-distribution. The default value is \code{0}, fixing the
 #' degrees-of-freedom to infinity. This corresponds to conditional standard
 #' normal innovations, the pre-1.1.0 behavior of \pkg{stochvol}.
 #' @param priorbeta numeric vector of length 2, indicating the mean and
@@ -63,22 +87,25 @@
 #' distribution of the latent AR(1)-process is used as the prior for the
 #' initial log-volatility \code{h_0}. When \code{priorlatent0} is equal to a
 #' number \eqn{B}, we have \eqn{h_0 \sim N(\mu, B\sigma^2)} a priori.
-#' @param thinpara single number greater or equal to 1, coercible to integer.
-#' Every \code{thinpara}th parameter draw is kept and returned. The default
+#' @param priorrho either \code{NA} for the no-leverage case or a numeric
+#' vector of length 2 that specify the beta prior distribution for
+#' \code{(rho+1)/2}
+#' @param priorspec in case one needs different prior distributions than the
+#' ones specified by \code{priormu}, \code{...}, \code{priorrho}, a \code{priorspec}
+#' object can be supplied here. A smart constructor for this usecase is
+#' \link{specify_priors}.
+#' @param thin single number greater or equal to 1, coercible to integer.
+#' Every \code{thinpara}th parameter and latent draw is kept and returned. The default
 #' value is 1, corresponding to no thinning of the parameter draws i.e. every
 #' draw is stored.
+#' @param thinpara single number greater or equal to 1, coercible to integer.
+#' Every \code{thinpara}th parameter draw is kept and returned. The default
+#' value is \code{thin}.
 #' @param thinlatent single number greater or equal to 1, coercible to integer.
 #' Every \code{thinlatent}th latent variable draw is kept and returned. The
-#' default value is 1, corresponding to no thinning of the latent variable
-#' draws, i.e. every draw is kept.
-#' @param thintime \emph{Deprecated.} Use 'keeptime' instead.
+#' default value is \code{thin}
 #' @param keeptime Either 'all' (the default) or 'last'. Indicates which latent
-#  volatility draws should be stored.
-#' @param keeptau logical value indicating whether the 'variance inflation
-#' factors' should be stored (used for the sampler with conditional t
-#' innovations only). This may be useful to check at what point(s) in time the
-#' normal disturbance had to be 'upscaled' by a mixture factor and when the
-#' series behaved 'normally'.
+#' volatility draws should be stored.
 #' @param quiet logical value indicating whether the progress bar and other
 #' informative output during sampling should be omitted. The default value is
 #' \code{FALSE}, implying verbose output.
@@ -87,72 +114,66 @@
 #' elements named \code{mu}, \code{phi}, and \code{sigma}, where \code{mu} is
 #' an arbitrary numerical value, \code{phi} is a real number between \code{-1}
 #' and \code{1}, and \code{sigma} is a positive real number. Moreover, if
-#' \code{priornu} is not \code{NA}, \code{startpara} must also contain an
+#' \code{priornu} is not \code{0}, \code{startpara} must also contain an
 #' element named \code{nu} (the degrees of freedom parameter for the
 #' t-innovations). The default value is equal to the prior mean. 
+#' In case of parallel execution with \code{cl} provided, \code{startpara} can be a list of
+#' named lists that initialize the parallel chains.
 #' @param startlatent \emph{optional} vector of length \code{length(y)},
 #' containing the starting values for the latent log-volatility draws. The
 #' default value is \code{rep(-10, length(y))}.
+#' In case of parallel execution with \code{cl} provided, \code{startlatent} can be a list of
+#' named lists that initialize the parallel chains.
+#' @param parallel \emph{optional} one of \code{"no"} (default), \code{"multicore"}, or \code{"snow"},
+#' indicating what type of parallellism is to be applied. Option
+#' \code{"multicore"} is not available on Windows.
+#' @param n_cpus \emph{optional} positive integer, the number of CPUs to be used in case of
+#' parallel computations. Defaults to \code{1L}. Ignored if parameter
+#' \code{cl} is supplied and \code{parallel != "snow"}.
+#' @param cl \emph{optional} so-called SNOW cluster object as implemented in package
+#' \code{parallel}. Ignored unless \code{parallel == "snow"}.
+#' @param n_chains \emph{optional} positive integer specifying the number of independent MCMC chains
+#' @param print_progress \emph{optional} one of \code{"automatic"}, \code{"progressbar"},
+#' or \code{"iteration"}, controls the output. Ignored if \code{quiet} is \code{TRUE}.
 #' @param expert \emph{optional} named list of expert parameters. For most
 #' applications, the default values probably work best. Interested users are
 #' referred to the literature provided in the References section. If
 #' \code{expert} is provided, it may contain the following named elements:
-#' 
-#' \code{parameterization}: Character string equal to \code{"centered"},
-#' \code{"noncentered"}, \code{"GIS_C"}, or \code{"GIS_NC"}. Defaults to
-#' \code{"GIS_C"}.
-#' 
-#' \code{mhcontrol}: Single numeric value controlling the proposal density of a
-#' Metropolis-Hastings (MH) update step when sampling \code{sigma}. If
-#' \code{mhcontrol} is smaller than 0, an independence proposal will be used,
-#' while values greater than zero control the stepsize of a log-random-walk
-#' proposal. Defaults to \code{-1}.
-#' 
-#' \code{gammaprior}: Single logical value indicating whether a Gamma prior for
-#' \code{sigma^2} should be used. If set to \code{FALSE}, an Inverse Gamma
-#' prior is employed. Defaults to \code{TRUE}.
-#' 
-#' \code{truncnormal}: Single logical value indicating whether a truncated
-#' Gaussian distribution should be used as proposal for draws of \code{phi}. If
-#' set to \code{FALSE}, a regular Gaussian prior is employed and the draw is
-#' immediately discarded when values outside the unit ball happen to be drawn.
-#' Defaults to \code{FALSE}.
-#' 
-#' \code{mhsteps}: Either \code{1}, \code{2}, or \code{3}. Indicates the number
-#' of blocks used for drawing from the posterior of the parameters. Defaults to
-#' \code{2}.
-#' 
-#' \code{proposalvar4sigmaphi}: Single positive number indicating the
-#' conditional prior variance of \code{sigma*phi} in the ridge \emph{proposal}
-#' density for sampling \code{(mu, phi)}. Defaults to \code{10^8}.
-#' 
-#' \code{proposalvar4sigmatheta}: Single positive number indicating the
-#' conditional prior variance of \code{sigma*theta} in the ridge
-#' \emph{proposal} density for sampling \code{(mu, phi)}. Defaults to
-#' \code{10^12}.
+#' \itemize{
+#' \item{interweave}{Logical value. If \code{TRUE} (the default),
+#' then ancillarity-sufficiency interweaving strategy (ASIS) is applied
+#' to improve on the sampling efficiency for the parameters.
+#' Otherwise one parameterization is used.}
+#' \item{correct_model_misspecification}{Logical value. If \code{FALSE}
+#' (the default), then auxiliary mixture sampling is used to sample the latent
+#' states. If \code{TRUE}, extra computations are made to correct for model
+#' misspecification either ex-post by reweighting or on-line using a
+#' Metropolis-Hastings step.}
+#' }
 #' @param \dots Any extra arguments will be forwarded to
 #' \code{\link{updatesummary}}, controlling the type of statistics calculated
 #' for the posterior draws.
 #' @return The value returned is a list object of class \code{svdraws} holding
-#' \item{para}{\code{mcmc} object containing the \emph{parameter} draws from
+#' \item{para}{\code{mcmc.list} object containing the \emph{parameter} draws from
 #' the posterior distribution.}
-#' \item{latent}{\code{mcmc} object containing the
+#' \item{latent}{\code{mcmc.list} object containing the
 #' \emph{latent instantaneous log-volatility} draws from the posterior
 #' distribution.}
-#' \item{latent0}{\code{mcmc} object containing the \emph{latent
+#' \item{latent0}{\code{mcmc.list} object containing the \emph{latent
 #' initial log-volatility} draws from the posterior distribution.}
-#' \item{tau}{\code{mcmc} object containing the \emph{latent variance inflation
+#' \item{tau}{\code{mcmc.list} object containing the \emph{latent variance inflation
 #' factors} for the sampler with conditional t-innovations \emph{(optional)}.}
-#' \item{beta}{\code{mcmc} object containing the \emph{regression coefficient}
+#' \item{beta}{\code{mcmc.list} object containing the \emph{regression coefficient}
 #' draws from the posterior distribution \emph{(optional)}.}
-#' \item{y}{the
-#' argument \code{y}.}
+#' \item{y}{the left hand side of the observation equation, usually
+#' the argument \code{y}. In case of an AR(\code{k}) specification, the
+#' first \code{k} elements are removed.}
 #' \item{runtime}{\code{proc_time} object containing the
 #' run time of the sampler.}
-#' \item{priors}{\code{list} containing the parameter
-#' values of the prior distribution, i.e. the arguments \code{priormu},
-#' \code{priorphi}, \code{priorsigma}, and potentially \code{priornu} and
-#' \code{priorbeta}.}
+#' \item{priors}{a \code{priorspec} object containing the parameter
+#' values of the prior distributions for \code{mu},
+#' \code{phi}, \code{sigma}, \code{nu}, \code{rho}, and
+#' \code{beta}s, and the variance of specification for \code{latent0}.}
 #' \item{thinning}{\code{list} containing the thinning
 #' parameters, i.e. the arguments \code{thinpara}, \code{thinlatent} and
 #' \code{keeptime}.}
@@ -171,142 +192,74 @@
 #' \code{\link{densplot}} and displaying the results on a single page.
 #' @note If \code{y} contains zeros, you might want to consider de-meaning your
 #' returns or use \code{designmatrix = "ar0"}.
-#' @author Gregor Kastner \email{gregor.kastner@@wu.ac.at}
-#' @seealso \code{\link{svsim}}, \code{\link{svlsample}}, \code{\link{updatesummary}},
-#' \code{\link{predict.svdraws}}, \code{\link{plot.svdraws}}.
+#' @seealso \code{\link{svsim}}, \code{\link{specify_priors}}
 #' @references Kastner, G. and Frühwirth-Schnatter, S. (2014).
 #' Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC
 #' estimation of stochastic volatility models. \emph{Computational Statistics &
 #' Data Analysis}, \bold{76}, 408--423,
 #' \url{http://dx.doi.org/10.1016/j.csda.2013.01.002}.
 #' @keywords models ts
-#' @examples
-#' # Example 1
-#' ## Simulate a short and highly persistent SV process 
-#' sim <- svsim(100, mu = -10, phi = 0.99, sigma = 0.2)
-#' 
-#' ## Obtain 5000 draws from the sampler (that's not a lot)
-#' draws <- svsample(sim$y, draws = 5000, burnin = 100,
-#' 		  priormu = c(-10, 1), priorphi = c(20, 1.5), priorsigma = 0.2)
-#' 
-#' ## Check out the results
-#' summary(draws)
-#' plot(draws)
-#' 
-#' 
-#' \dontrun{
-#' # Example 2
-#' ## AR(1) structure for the mean
-#' data(exrates)
-#' len <- 3000
-#' ahead <- 100
-#' y <- head(exrates$USD, len)
-#' 
-#' ## Fit AR(1)-SVL model to EUR-USD exchange rates
-#' res <- svsample(y, designmatrix = "ar1")
-#' 
-#' ## Use predict.svdraws to obtain predictive distributions
-#' preddraws <- predict(res, steps = ahead)
-#' 
-#' ## Calculate predictive quantiles
-#' predquants <- apply(preddraws$y, 2, quantile, c(.1, .5, .9))
-#' 
-#' ## Visualize
-#' expost <- tail(head(exrates$USD, len+ahead), ahead)
-#' ts.plot(y, xlim = c(length(y)-4*ahead, length(y)+ahead),
-#' 	       ylim = range(c(predquants, expost, tail(y, 4*ahead))))
-#' for (i in 1:3) {
-#'   lines((length(y)+1):(length(y)+ahead), predquants[i,],
-#'         col = 3, lty = c(2, 1, 2)[i])
-#' }
-#' lines((length(y)+1):(length(y)+ahead), expost,
-#'       col = 2)
-#' 
-#' 
-#' # Example 3
-#' ## Predicting USD based on JPY and GBP in the mean
-#' data(exrates)
-#' len <- 3000
-#' ahead <- 30
-#' ## Calculate log-returns
-#' logreturns <- apply(exrates[, c("USD", "JPY", "GBP")], 2,
-#'                     function (x) diff(log(x)))
-#' logretUSD <- logreturns[2:(len+1), "USD"]
-#' regressors <- cbind(1, as.matrix(logreturns[1:len, ]))  # lagged by 1 day
-#' 
-#' ## Fit SV model to EUR-USD exchange rates
-#' res <- svsample(logretUSD, designmatrix = regressors)
-#' 
-#' ## Use predict.svdraws to obtain predictive distributions
-#' predregressors <- cbind(1, as.matrix(logreturns[(len+1):(len+ahead), ]))
-#' preddraws <- predict(res, steps = ahead,
-#'                      newdata = predregressors)
-#' predprice <- exrates[len+2, "USD"] * exp(t(apply(preddraws$y, 1, cumsum)))
-#' 
-#' ## Calculate predictive quantiles
-#' predquants <- apply(predprice, 2, quantile, c(.1, .5, .9))
-#' 
-#' ## Visualize
-#' priceUSD <- exrates[3:(len+2), "USD"]
-#' expost <- exrates[(len+3):(len+ahead+2), "USD"]
-#' ts.plot(priceUSD, xlim = c(len-4*ahead, len+ahead+1),
-#' 	       ylim = range(c(expost, predquants, tail(priceUSD, 4*ahead))))
-#' for (i in 1:3) {
-#'   lines(len:(len+ahead), c(tail(priceUSD, 1), predquants[i,]),
-#'         col = 3, lty = c(2, 1, 2)[i])
-#' }
-#' lines(len:(len+ahead), c(tail(priceUSD, 1), expost),
-#'       col = 2)
-#' }
+#' @example inst/examples/svsample.R
 #' @export
 svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
                      priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
-                     priornu = NA, priorbeta = c(0, 10000), priorlatent0 = "stationary",
-                     thinpara = 1, thinlatent = 1, keeptime = "all", thintime = NULL,
-                     keeptau = FALSE, quiet = FALSE, startpara, startlatent, expert, ...) {
+                     priornu = 0, priorrho = NA,
+                     priorbeta = c(0, 10000), priorlatent0 = "stationary",
+                     priorspec = NULL, thin = 1,
+                     thinpara = thin, thinlatent = thin, keeptime = "all",
+                     quiet = FALSE, startpara = NULL, startlatent = NULL,
+                     parallel = c("no", "multicore", "snow"),
+                     n_cpus = 1L, cl = NULL, n_chains = 1L,
+                     print_progress = "automatic",
+                     expert = NULL, ...) {
 
-  # Some error checking for y
+  # Validation
+  ## y
   if (inherits(y, "svsim")) {
-    y <- y[["y"]]
-    warning("Extracted data vector from 'svsim'-object.")
+    simobj <- y
+    y <- simobj[["y"]]
+    message("Extracted data vector from 'svsim'-object.")
+  } else {
+    simobj <- NULL
   }
-  if (!is.numeric(y)) stop("Argument 'y' (data vector) must be numeric.")
-
-  if (length(y) < 2) stop("Argument 'y' (data vector) must contain at least two elements.")
+  assert_numeric(y, "Argument 'y'")
+  assert_gt(length(y), 1, "The length of the input time series 'y'")
 
   y_orig <- y
   y <- as.vector(y)
 
-  if (any(is.na(designmatrix)) && any(y^2 == 0)) {
-    myoffset <- sd(y)/10000
-    warning(paste("Argument 'y' (data vector) contains zeros. I am adding an offset constant of size ", myoffset, " to do the auxiliary mixture sampling. If you want to avoid this, you might consider de-meaning the returns before calling this function.", sep=""))
-  } else myoffset <- 0
-
-  # Some error checking for draws
-  if (!is.numeric(draws) || length(draws) != 1 || draws < 1) {
-    stop("Argument 'draws' (number of MCMC iterations after burn-in) must be a single number >= 1.")
+  myoffset <- if (any(is.na(designmatrix)) && any(y^2 == 0)) {
+    warning("Argument 'y' (data vector) contains values very close to zero. I am applying an offset constant of size ", myoffset, " to do the auxiliary mixture sampling. If you want to avoid this, you might consider de-meaning the returns before calling this function.")
+    sd(y)/10000
   } else {
-    draws <- as.integer(draws)
+    0
   }
 
-  # Some error checking for burnin
-  if (!is.numeric(burnin) || length(burnin) != 1 || burnin < 0) {
-    stop("Argument 'burnin' (burn-in period) must be a single number >= 0.")
-  } else {
-    burnin <- as.integer(burnin)
-  }
+  ## draws
+  assert_numeric(draws, "Argument 'draws'")
+  assert_single(draws, "Argument 'draws'")
+  assert_positive(draws, "Argument 'draws'")
+  draws <- as.integer(draws)
 
-  # Some error checking for designmatrix and save the mode of mean modelling
+  ## burnin
+  assert_numeric(burnin, "Argument 'burnin'")
+  assert_single(burnin, "Argument 'burnin'")
+  assert_ge(burnin, 0, "Argument 'burnin'")
+  burnin <- as.integer(burnin)
+
+  ## regression
   meanmodel <- "matrix"
   arorder <- 0L
   if (any(is.na(designmatrix))) {
-    designmatrix <- matrix(NA)
+    designmatrix <- matrix(NA_real_)
     meanmodel <- "none"
   } else {
     if (any(grep("ar[0-9]+$", as.character(designmatrix)[1]))) {
       arorder <- as.integer(gsub("ar", "", as.character(designmatrix)))
-      if (length(y) <= arorder + 1) stop("Time series 'y' is too short for this AR process.")
-      designmatrix <- matrix(rep(1, length(y) - arorder), ncol = 1)
+      if (length(y) <= arorder + 1) {
+        stop("Time series 'y' is too short for this AR process.")
+      }
+      designmatrix <- matrix(rep.int(1, length(y) - arorder), ncol = 1)
       colnames(designmatrix) <- c("const")
       meanmodel <- "constant"
       if (arorder >= 1) {  # e.g. first row with "ar(3)": c(1, y_3, y_2, y_1)
@@ -318,459 +271,451 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
         y <- y[-(1:arorder)]
         meanmodel <- paste0("ar", arorder)
       }
+    } else if (is.character(designmatrix)) {
+      stop("Argument 'designmatrix' must be a numeric matrix or an AR-specification.")
     }
-    if (!is.numeric(designmatrix)) stop("Argument 'designmatrix' must be a numeric matrix or an AR-specification.")
+    assert_numeric(designmatrix, "The processed argument 'designmatrix'")
     if (!is.matrix(designmatrix)) {
       designmatrix <- matrix(designmatrix, ncol = 1)
     }
-    if (!nrow(designmatrix) == length(y)) stop("Number of columns of argument 'designmatrix' must be equal to length(y).")
-  }
-
-  # Some error checking for the prior parameters 
-  if (!is.numeric(priormu) || length(priormu) != 2) {
-    stop("Argument 'priormu' (mean and sd for the Gaussian prior for mu) must be numeric and of length 2.")
-  }
-
-  if (!is.numeric(priorphi) | length(priorphi) != 2) {
-    stop("Argument 'priorphi' (shape1 and shape2 parameters for the Beta prior for (phi + 1) / 2) must be numeric and of length 2.")
-  }
-
-  if (!is.numeric(priorsigma) | length(priorsigma) != 1 | priorsigma <= 0) {
-    stop("Argument 'priorsigma' (scaling of the chi-squared(df = 1) prior for sigma^2) must be a single number > 0.")
-  }
-
-  if (any(is.na(priornu))) {
-    priornu <- NA
-  } else {
-    if (!is.numeric(priornu) || length(priornu) != 2 || priornu[1] >= priornu[2] || priornu[1] < 0) {
-      stop("If not NA, argument 'priornu' (lower and upper bounds for the uniform prior for the df) must be numeric and of length 2. Moreover, 0 <= priornu[1] < priornu[2].")
+    if (NROW(designmatrix) != length(y)) {
+      stop("Number of columns of argument 'designmatrix' must be equal to length(y).")
     }
   }
 
-  if (!is.numeric(priorbeta) || length(priorbeta) != 2) {
-    stop("Argument 'priorbeta' (means and sds for the independent Gaussian priors for beta) must be numeric and of length 2.")
+  ## priors
+  if (isTRUE(is.null(priorspec))) {
+    validate_sv_priors(priormu, priorphi, priorsigma, priornu, priorrho, priorbeta, priorlatent0)
+    priorspec <-
+      specify_priors(mu = sv_normal(mean = priormu[1], sd = priormu[2]),
+                     phi = sv_beta(shape1 = priorphi[1], shape2 = priorphi[2]),
+                     sigma2 = sv_gamma(shape = 0.5, rate = 0.5 / priorsigma),
+                     nu = if (priornu == 0) sv_infinity() else sv_exponential(rate = priornu),
+                     rho = if (isTRUE(is.na(priorrho))) sv_constant(value = 0) else sv_beta(shape1 = priorrho[1], shape2 = priorrho[2]),
+                     beta = sv_multinormal(mean = priorbeta[1], sd = priorbeta[2], dim = NCOL(designmatrix)),
+                     latent0_variance = priorlatent0)
+  } else if (!inherits(priorspec, "sv_priorspec")) {
+    stop("Received argument 'priorspec' but it does not have the correct form. Please refer to the function called 'specify_priors'.")
   }
+  keeptau <- !isTRUE(inherits(priorspec$nu, "sv_infinity"))
 
-  if (!is.numeric(priorlatent0) || length(priorlatent0) != 1 || priorlatent0 < 0) {
-    if (priorlatent0 == "stationary") priorlatent0 <- -1L else
-      stop("Argument 'priorlatent0' must be 'stationary' or a single non-negative number.")
+  ## thinning parameters
+  validate_thinning(thinpara, thinlatent, keeptime)
+  thinpara <- as.integer(thinpara)
+  thinlatent <- as.integer(thinlatent)
+  thintime <- switch(keeptime,
+                     all = 1L,
+                     last = length(y))
+
+  ## parallel (strongly influenced by package 'boot')
+  parallel <- match.arg(parallel)
+  have_mc <- FALSE
+  have_snow <- FALSE
+  if (parallel != "no") {
+    if (parallel == "multicore") {
+      have_mc <- .Platform$OS.type != "windows"
+    } else if (parallel == "snow") {
+      have_snow <- TRUE
+    }
+    if (!have_mc && !have_snow) {
+      n_cpus <- 1L
+    }
+    requireNamespace("parallel")
   }
-
-  # Some error checking for thinpara
-  if (!is.numeric(thinpara) || length(thinpara) != 1 || thinpara < 1) {
-    stop("Argument 'thinpara' (thinning parameter for mu, phi, and sigma) must be a single number >= 1.")
+  create_cluster <- isTRUE(is.null(cl))
+  have_cluster <- isTRUE(inherits(cl, "SOCKcluster"))
+  if (have_snow && !create_cluster && !have_cluster) {
+    warning("Unknown type of input in parameter 'cl'. Should be either NULL or of class 'cluster' created by the parallel package. Turning off parallelism")
+    cl <- NULL
+    have_mc <- FALSE
+    have_snow <- FALSE
+    n_cpus <- 1L
+  }
+  if (have_snow && n_cpus == 1L && !have_cluster) {
+    warning("Inconsistent settings for parallel execution: snow parallelism combined with n_cpus == 1 and no supplied cluster object. Turning off parallelism")
+    have_snow <- FALSE
+  }
+  if (have_mc && n_cpus == 1L) {
+    warning("Inconsistent settings for parallel execution: multicore parallelism combined with n_cpus == 1. Turning off parallelism")
+    have_mc <- FALSE
+  }
+  n_workers <- if (have_snow) {
+    if (have_cluster) {
+      length(cl)
+    } else {
+      n_cpus
+    }
   } else {
-    thinpara <- as.integer(thinpara)
+    1L
+  }
+  assert_single(n_chains, "Parameter for number of chains")
+  assert_numeric(n_chains, "Parameter for number of chains")
+  n_chains <- as.integer(n_chains)
+  assert_positive(n_chains, "Parameter for number of chains")
+
+  ## expert
+  expert <- validate_and_process_expert(expert)
+  correct_model_misspecification <- expert$correct_model_misspecification
+  interweave <- expert$interweave
+  fast_sv <- expert$fast_sv
+  general_sv <- expert$general_sv
+
+  # Initial values
+  have_parallel_startpara <- !is.null(startpara) && isTRUE(all(sapply(startpara, is.list)))
+  have_parallel_startlatent <- !is.null(startlatent) && isTRUE(is.list(startlatent))
+  if (have_parallel_startpara && length(startpara) != n_chains) {
+    stop("Got list of lists for parameter 'startpara' of length ", length(startpara), " but the number of chains is ", n_chains, ". The two numbers should match.")
+  }
+  if (have_parallel_startlatent && length(startlatent) != n_chains) {
+    stop("Got list for parameter 'startlatent' of length ", length(startlatent), " but the number of chains is ", n_chains, ". The two numbers should match.")
+  }
+  startbetadefault <- if (meanmodel == "none") {
+    mean(priorspec$beta)
+  } else {
+    init_beta(y, designmatrix)
+  }
+  startmudefault <- if (meanmodel == "none") {
+    init_mu(y, priorspec)
+  } else {
+    init_mu(y, priorspec, X = designmatrix, beta_hat = startbetadefault)
+  }
+  startparadefault <-
+    list(mu = startmudefault,
+         phi = if (inherits(priorspec$phi, "sv_beta")) 2 * mean(priorspec$phi) - 1 else mean(priorspec$phi),
+         sigma = sqrt(mean(priorspec$sigma2)),
+         nu = 2 + mean(priorspec$nu),
+         rho = if (inherits(priorspec$rho, "sv_beta")) 2 * mean(priorspec$rho) - 1 else mean(priorspec$rho),
+         beta = startbetadefault,
+         latent0 = -10)
+  startpara <- if (have_parallel_startpara) {
+    lapply(startpara, function (x, def) apply_default_list(x, def), def = startparadefault)
+  } else {
+    replicate(n_chains, apply_default_list(startpara, startparadefault), simplify = FALSE)
+  }
+  startlatent <- if (have_parallel_startlatent) {
+    lapply(startlatent, function (x, def) apply_default_list(x, def), def = rep.int(NA, length(y)))
+  } else if (is.null(startlatent)) {
+    lapply(startpara, function (x, len) rep.int(x$mu, len), len = length(y))  # default startlatent is constant mu
+  } else {
+    replicate(n_chains, apply_default_list(startlatent, rep.int(NA, length(y))), simplify = FALSE)
+  }
+  validate_initial_values(startpara, startlatent, y, designmatrix)
+
+  # Decision about the sampler
+  use_fast_sv <-
+    # rho == 0
+    (inherits(priorspec$rho, "sv_constant") && isTRUE(priorspec$rho$value == 0)) &&
+    # mu is either 0 or normal
+    ((inherits(priorspec$mu, "sv_constant") && isTRUE(priorspec$mu$value == 0)) ||
+       inherits(priorspec$mu, "sv_normal")) &&
+    # fast SV can't correct for misspecification and also do t-errors and/or regression
+    (!correct_model_misspecification || (inherits(priorspec$nu, "sv_infinity") && meanmodel == "none")) &&
+    # prior for phi is beta
+    inherits(priorspec$phi, "sv_beta") &&
+    # prior for sigma is gamma(0.5, _)
+    (inherits(priorspec$sigma2, "sv_gamma") && priorspec$sigma2$shape == 0.5)
+
+  # Pick sampling function
+  myquiet <- (.Platform$OS.type != "unix") || quiet  # Hack to prevent console flushing problems with Windows
+  ## print progress
+  print_settings <- if (is.character(print_progress)) {
+    print_progress <- match.arg(print_progress, c("automatic", "progressbar", "iteration"))
+    if (print_progress == "automatic") {
+      n_chains
+    } else if (print_progress == "progressbar") {
+      1
+    } else {
+      max(c(2, n_chains))
+    }
+  } else {  # hidden feature
+    print_progress
   }
 
-  # Some error checking for thinlatent
-  if (!is.numeric(thinlatent) || length(thinlatent) != 1 || thinlatent < 1) {
-    stop("Argument 'thinlatent' (thinning parameter for the latent log-volatilities) must be a single number >= 1.")
-  } else {
-    thinlatent <- as.integer(thinlatent)
-  }
-  
-  # Check whether 'thintime' was used
-  if (!is.null(thintime))
-    stop("Argument 'thintime' is deprecated. Please use 'keeptime' instead.")
-
-  # Some error checking for keeptime
-  if (length(keeptime) != 1L || !is.character(keeptime) || !(keeptime %in% c("all", "last"))) {
-    stop("Parameter 'keeptime' must be either 'all' or 'last'.")
-  } else {
-    if (keeptime == "all") thintime <- 1L else if (keeptime == "last") thintime <- length(y)
-  }
-
-  # Some error checking for expert
-  if (missing(expert)) {
-    para <- 3L ; parameterization <- 'GIS_C'
-    mhcontrol <- -1
-    gammaprior <- TRUE
-    truncnormal <- FALSE
-    mhsteps <- 2L
-    B011 <- 10^8
-    B022 <- 10^12
-  } else {
-    expertnames <- names(expert)
-    if (!is.list(expert) | is.null(expertnames) | any(expertnames == ""))
-      stop("Argument 'expert' must be a named list with nonempty names.")
-    if (length(unique(expertnames)) != length(expertnames))
-      stop("No duplicate elements allowed in argument 'expert'.")
-    allowednames <- c("parameterization", "mhcontrol", "gammaprior", "truncnormal", "mhsteps", "proposalvar4sigmaphi", "proposalvar4sigmatheta")
-    exist <- pmatch(expertnames, allowednames)
-    if (any(is.na(exist)))
-      stop(paste("Illegal element '", paste(expertnames[is.na(exist)], collapse="' and '"), "' in argument 'expert'.", sep=''))
-
-    expertenv <- list2env(expert) 
-
-    if (exists("parameterization", expertenv)) {
-      parameterization <- expert[["parameterization"]]
-      if (!is.character(parameterization) || any(is.na(parameterization))) {
-        stop("Argument 'parameterization' must be either 'centered', 'noncentered', 'GIS_C', or 'GIS_NC'.")
+  sampling_function <- if (use_fast_sv) {
+    function (chain) {
+      res <- stochvol::svsample_fast_cpp(y, draws, burnin, designmatrix, priorspec,
+                                         thinpara, thinlatent, keeptime,
+                                         startpara[[chain]], startlatent[[chain]], keeptau,
+                                         list(quiet = myquiet, chain = chain, n_chains = print_settings),
+                                         correct_model_misspecification, interweave, myoffset, fast_sv)
+      if (correct_model_misspecification) {
+        para_indices <- sample.int(n = NROW(res$para), size = NROW(res$para), replace = TRUE, prob = res$correction_weight_para, useHash = FALSE)
+        res$para <- res$para[para_indices, , drop = FALSE]
+        latent_indices <- if (thinpara == thinlatent) {  # same re-sampling if thinning is the same
+          para_indices
+        } else {  # separate re-sampling if thinning is different => WARNING! joint distribution of para and latent is gone!
+          sample.int(n = NROW(res$latent), size = NROW(res$latent), replace = TRUE, prob = res$correction_weight_latent, useHash = FALSE)
+        }
+        res$latent <- res$latent[latent_indices, , drop = FALSE]
       }
-      switch(parameterization,
-             centered = para <- 1L,
-             noncentered = para <- 2L,
-             GIS_C = para <- 3L,
-             GIS_NC = para <- 4L,
-             stop("Unknown parameterization. Currently you can only use 'centered', 'noncentered', 'GIS_C', and 'GIS_NC'.")
-             )
-    } else {
-      para <- 3L ; parameterization <- 'GIS_C'
-    }
-
-    # Remark: mhcontrol < 0 means independence proposal,
-    #         mhcontrol > 0 controls stepsize of log-random-walk proposal
-    if (exists("mhcontrol", expertenv)) {
-      mhcontrol <- expert[["mhcontrol"]]
-      if (!is.numeric(mhcontrol) | length(mhcontrol) != 1)
-        stop("Argument 'mhcontrol' must be a single number.")
-    } else {
-      mhcontrol <- -1
-    }
-
-    # use a Gamma prior for sigma^2 in C?
-    if (exists("gammaprior", expertenv)) {
-      gammaprior <- expert[["gammaprior"]]
-      if (!is.logical(gammaprior)) stop("Argument 'gammaprior' must be TRUE or FALSE.")
-    } else {
-      gammaprior <- TRUE
-    }
-
-    # use a truncated normal as proposal? (or normal with rejection step)
-    if (exists("truncnormal", expertenv)) {
-      truncnormal <- expert[["truncnormal"]]
-      if (!is.logical(truncnormal)) stop("Argument 'truncnormal' must be TRUE or FALSE.")
-    } else {
-      truncnormal <- FALSE
-    }
-
-    if (exists("mhsteps", expertenv)) {
-      mhsteps <- as.integer(expert[["mhsteps"]])
-      if (mhsteps != 2L & mhsteps != 1L & mhsteps != 3L) stop("mhsteps must be 1, 2, or 3")
-      if (mhsteps != 2L & mhcontrol >= 0)
-        stop("Log normal random walk proposal currently only implemented for mhsteps==2.")
-      if (mhsteps != 2L & !isTRUE(gammaprior))
-        stop("Inverse Gamma prior currently only implemented for mhsteps==2.")
-    } else {
-      mhsteps <- 2L
-    }
-
-    # prior for ridge _proposal_ (variance of sigma*phi)
-    if (exists("proposalvar4sigmaphi", expertenv)) {
-      B011 <- expert[["proposalvar4sigmaphi"]]
-      if (!is.numeric(B011) | length(B011) != 1 | B011 <= 0)
-        stop("Argument 'proposalvar4sigmaphi' must be a positive number.")
-    } else {
-      B011 <- 10^8
-    }
-
-    # prior for ridge _proposal_ (variance of sigma*theta)
-    if (exists("proposalvar4sigmatheta", expertenv)) {
-      B022 <- expert[["proposalvar4sigmatheta"]]
-      if (!is.numeric(B022) | length(B022) != 1 | B022 <= 0)
-        stop("Argument 'proposalvar4sigmatheta' must be a positive number.")
-    } else {
-      B022 <- 10^12
-    }
-  }
-
-  # Some input checking for startpara
-  if (missing(startpara)) {
-    if (any(is.na(priornu))) {
-      startpara <- list(mu = priormu[1],
-                        phi = 2 * (priorphi[1] / sum(priorphi)) - 1,
-                        sigma = priorsigma)
-    } else {
-      startpara <- list(mu = priormu[1],
-                        phi = 2 * (priorphi[1] / sum(priorphi)) - 1,
-                        sigma = priorsigma,
-                        nu = mean(priornu))
+      res
     }
   } else {
-    if (!is.list(startpara))
-      stop("Argument 'startpara' must be a list. Its elements must be named 'mu', 'phi', 'sigma'. Moreover, if !is.na(priornu), an element named 'nu' must exist.")
-
-    if (!is.numeric(startpara[["mu"]]))
-      stop('Argument \'startpara[["mu"]]\' must exist and be numeric.')
-
-    if (!is.numeric(startpara[["phi"]]))
-      stop('Argument \'startpara[["phi"]]\' must exist and be numeric.')
-
-    if (abs(startpara[["phi"]]) >= 1)
-      stop('Argument \'startpara[["phi"]]\' must be between -1 and 1.')
-
-    if (!is.numeric(startpara[["sigma"]]))
-      stop('Argument \'startpara[["sigma"]]\' must exist and be numeric.')
-
-    if (startpara[["sigma"]] <= 0)
-      stop('Argument \'startpara[["sigma"]]\' must be positive.')
-
-    if (!any(is.na(priornu)) && !is.numeric(startpara[["nu"]]))
-      stop('Argument \'startpara[["nu"]]\' must exist and be numeric.')
-
-    if (!any(is.na(priornu)) && (startpara[["nu"]] > priornu[2] || startpara[["nu"]] < priornu[1]))
-      stop('Argument \'startpara[["nu"]]\' must be within range(priornu).')
+    function (chain) {
+      stochvol::svsample_general_cpp(y, draws, burnin, designmatrix, priorspec,
+                                     thinpara, thinlatent, keeptime,
+                                     startpara[[chain]], startlatent[[chain]], keeptau,
+                                     list(quiet = myquiet, chain = chain, n_chains = print_settings),
+                                     correct_model_misspecification, interweave, myoffset, general_sv)
+    }
   }
 
-  # Some input checking for startlatent
-  if (missing(startlatent)) {
-    startlatent <- rep(-10, length(y))
+  # Print sampling info
+  if (use_fast_sv) {
+    para <- 1 + (fast_sv$baseline_parameterization == "noncentered") + 2 * interweave
+    parameterization <- c("centered", "noncentered", "GIS_C", "GIS_NC")[para]
+
+    if (!quiet) {
+      cat(paste("\nCalling ", parameterization, " MCMC sampler with ", draws+burnin, " iter. Series length is ", length(y), ".\n",sep=""), file=stderr())
+      flush.console()
+    }
   } else {
-    if (!is.numeric(startlatent) | length(startlatent) != length(y))
-      stop("Argument 'startlatent' must be numeric and of the same length as the data 'y'.")
+    strategies <- if (interweave) c("centered", "noncentered") else expert$general_sv$starting_parameterization
+    parameterization <- rep(strategies, general_sv$multi_asis)
+
+    renameparam <- c("centered" = "C", "noncentered" = "NC")
+    if (!quiet) {
+      cat(paste("\nCalling ", asisprint(renameparam[parameterization], renameparam), " MCMC sampler with ", draws+burnin, " iter. Series length is ", length(y), ".\n",sep=""), file=stderr())
+      flush.console()
+    }
   }
 
-  if (length(keeptau) != 1 || !is.logical(keeptau)) {
-    stop("Argument 'keeptau' must be TRUE or FALSE.")
+  # Call sampler
+  runtime <- system.time(reslist <-
+    if ((n_cpus > 1L || have_cluster) && (have_mc || have_snow)) {
+      if (have_mc) {
+        parallel::mclapply(seq_len(n_chains), sampling_function, mc.cores = n_cpus)
+      } else if (have_snow) {
+        list(...) # evaluate any promises
+        if (create_cluster) {
+          cl <- parallel::makePSOCKcluster(rep("localhost", n_workers), outfile = NULL)
+        }
+        RNGkind(kind = "L'Ecuyer-CMRG")
+        parallel::clusterSetRNGStream(cl)
+        parallel::clusterEvalQ(cl, library(stochvol))
+        parallel::clusterExport(cl, c("y", "draws", "burnin", "designmatrix", "priorspec",
+                                      "thinpara", "thinlatent", "keeptime",
+                                      "startpara", "startlatent", "keeptau",
+                                      "myquiet", "n_chains", "print_settings",
+                                      "correct_model_misspecification", "interweave", "myoffset",
+                                      "fast_sv", "general_sv"),
+                                envir = environment())
+        if (create_cluster) {
+          reslist <- tryCatch(parallel::parLapply(cl, seq_len(n_chains), sampling_function),
+                              finally = parallel::stopCluster(cl))
+          reslist
+        } else {
+          parallel::parLapply(cl, seq_len(n_chains), sampling_function)
+        }
+      }
+    } else {
+      lapply(seq_len(n_chains), sampling_function)
+    }
+  )
+  res <- list()
+  class(res) <- "svdraws"
+
+  # Process results
+  if (any(is.na(res))) {
+    stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
   }
-
-  if (any(is.na(priornu)) && keeptau) {
-    warning("Setting argument 'keeptau' to FALSE, as 'priornu' is NA.")
-    keeptau <- FALSE
-  }
-
-  if (!quiet) {
-    cat(paste("\nCalling ", parameterization, " MCMC sampler with ", draws+burnin, " iter. Series length is ", length(y), ".\n",sep=""), file=stderr())
-    flush.console()
-  }
-
-  if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet  # Hack to prevent console flushing problems with Windows
-
-  runtime <- system.time(res <-
-    svsample_cpp(y, draws, burnin, designmatrix,
-          priormu[1], priormu[2]^2, priorphi[1], priorphi[2], priorsigma, 
-          thinlatent, thintime, startpara, startlatent, keeptau, myquiet, para,
-          mhsteps, B011, B022, mhcontrol, gammaprior, truncnormal,
-          myoffset, FALSE, priornu, priorbeta, priorlatent0))
-
-  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
 
   if (!quiet) {
     cat("Timing (elapsed): ", file=stderr())
     cat(runtime["elapsed"], file=stderr())
     cat(" seconds.\n", file=stderr())
-    cat(round((draws+burnin)/runtime[3]), "iterations per second.\n\n", file=stderr())
+    cat(round((draws+burnin)*n_chains/runtime[3]), "iterations per second.\n\n", file=stderr())
     cat("Converting results to coda objects... ", file=stderr())
   }
 
   # store results:
-  # remark: +1, because C-sampler also returns the first value
-  res$y <- y_orig
-  res$para <- mcmc(res$para[seq(burnin+thinpara+1, burnin+draws+1, thinpara),,drop=FALSE], burnin+thinpara, burnin+draws, thinpara)
-  res$latent <- mcmc(t(res$latent), burnin+thinlatent, burnin+draws, thinlatent)
-  if (keeptime == "all") attr(res$latent, "dimnames") <- list(NULL, paste0('h_', arorder + seq_along(y))) else if (keeptime == "last") attr(res$latent, "dimnames") <- list(NULL, paste0('h_', arorder + length(y)))
-  res$latent0 <- mcmc(res$latent0, burnin+thinlatent, burnin+draws, thinlatent)
-  if (!any(is.na(designmatrix))) {
-    res$beta <- mcmc(res$beta[seq(burnin+thinpara+1, burnin+draws+1, thinpara),,drop=FALSE], burnin+thinpara, burnin+draws, thinpara)
-    attr(res$beta, "dimnames") <- list(NULL, paste("b", 0:(ncol(designmatrix)-1), sep = "_"))
-  } else res$beta <- NULL
-  res$meanmodel <- meanmodel
-
-  if (ncol(res$para) == 3) {
-    attr(res$para, "dimnames") <- list(NULL, c("mu", "phi", "sigma"))
-    res$priors <- list(mu = priormu, phi = priorphi, sigma = priorsigma, gammaprior = gammaprior)
-  } else {
-    attr(res$para, "dimnames") <- list(NULL, c("mu", "phi", "sigma", "nu"))
-    res$priors <- list(mu = priormu, phi = priorphi, sigma = priorsigma, nu = priornu, gammaprior = gammaprior)
-    #res$tau <- mcmc(t(res$tau), burnin+thinlatent, burnin+draws, thinlatent)
-  }
-
-  if (!any(is.na(designmatrix))) {
-    res$priors <- c(res$priors, "beta" = list(priorbeta), "designmatrix" = list(designmatrix))
-  }
-
-  if (keeptau) {
-    res$tau <- mcmc(t(res$tau), burnin+thinlatent, burnin+draws, thinlatent)
-    if (keeptime == "all") attr(res$tau, "dimnames") <- list(NULL, paste0('tau_', arorder + seq_along(y))) else if (keeptime == "last") attr(res$tau, "dimnames") <- list(NULL, paste0('tau_', arorder + length(y)))
-  }
-
   res$runtime <- runtime
+  res$y <- y
+  res$y_orig <- y_orig
+  res$simobj <- simobj
+  res$para <- coda::mcmc.list(lapply(reslist, function (x, d, b, th) coda::mcmc(x$para, b+th, b+d, th), d=draws, b=burnin, th=thinpara))
+  res$latent <- coda::mcmc.list(lapply(reslist, function (x, d, b, th) coda::mcmc(x$latent, b+th, b+d, th), d=draws, b=burnin, th=thinlatent))
+  res$latent0 <- coda::mcmc.list(lapply(reslist, function (x, d, b, th) coda::mcmc(x$latent0, b+th, b+d, th), d=draws, b=burnin, th=thinlatent))
   res$thinning <- list(para = thinpara, latent = thinlatent, time = keeptime)
-  class(res) <- "svdraws"
+  res$priors <- priorspec
+  if (!any(is.na(designmatrix))) {
+    res$beta <- coda::mcmc.list(lapply(reslist, function (x, d, b, th) coda::mcmc(x$beta, b+th, b+d, th), d=draws, b=burnin, th=thinpara))
+    res$designmatrix <- designmatrix
+  } else {
+    res$beta <- NULL
+  }
+  if (keeptau) {
+    res$tau <- coda::mcmc.list(lapply(reslist, function (x, d, b, th) coda::mcmc(x$tau, b+th, b+d, th), d=draws, b=burnin, th=thinlatent))
+  } else {
+    res$tau <- NULL
+  }
+  res$meanmodel <- meanmodel
+  res$para_transform <- list(mu = function (x) {x},
+                             phi = if (inherits(priorspec$phi, "sv_beta")) function (x) {(x+1)/2} else function (x) {x},
+                             sigma = function (x) {x^2},
+                             nu = if (inherits(priorspec$nu, "sv_exponential")) function (x) {x-2} else function (x) {x},
+                             rho = if (inherits(priorspec$rho, "sv_beta")) function (x) {(x+1)/2} else function (x) {x})
+  res$para_inv_transform <- list(mu = function (x) {x},
+                                 phi = if (inherits(priorspec$phi, "sv_beta")) function (x) {2*x-1} else function (x) {x},
+                                 sigma = function (x) {sqrt(x)},
+                                 nu = if (inherits(priorspec$nu, "sv_exponential")) function (x) {x+2} else function (x) {x},
+                                 rho = if (inherits(priorspec$rho, "sv_beta")) function (x) {2*x-1} else function (x) {x})
+  res$para_transform_det <- list(mu = function (x) {1},
+                                 phi = if (inherits(priorspec$phi, "sv_beta")) function (x) {.5} else function (x) {1},
+                                 sigma = function (x) {2*x},
+                                 nu = function (x) {1},
+                                 rho = if (inherits(priorspec$rho, "sv_beta")) function (x) {.5} else function (x) {1})
+  res$resampled <- use_fast_sv && correct_model_misspecification
+  if (res$resampled) {
+    res$correction_weight_para <- lapply(reslist, function (x) x$correction_weight_para)
+    res$correction_weight_latent <- lapply(reslist, function (x) x$correction_weight_latent)
+  }
 
   if (!quiet) {
-    cat("Done!\n", file=stderr())
-    cat("Summarizing posterior draws... ", file=stderr())
+    message("Done!")
+    message("Summarizing posterior draws...")
   }
-  res <- updatesummary(res, ...)
+  res <- if (res$resampled) {
+    message("No computation of effective sample size after re-sampling")
+    updatesummary(res, esspara = FALSE, esslatent = FALSE, ...)
+  } else {
+    updatesummary(res, ...)
+  }
 
   if (!quiet) cat("Done!\n\n", file=stderr())
   res
 }
 
-# This function does not check input nor converts the result to coda objects!
-
+#' @rdname svsample_cpp
+#' @export
+default_fast_sv <- 
+  list(baseline_parameterization = "centered",  # "centered" or "noncentered"
+       proposal_phi = "immediate acceptance-rejection",  # "immediate acceptance-rejection" or "repeated acceptance-rejection"
+       proposal_sigma2 = "independence",  # "independence" or "log random walk"
+       proposal_intercept_var = 1e12,  # positive number
+       proposal_phi_var = 1e8,  # positive number
+       proposal_sigma2_rw_scale = 0.1,  # positive number
+       mh_blocking_steps = 2,  # 1/2/3
+       store_indicators = FALSE,
+       update = list(latent_vector = TRUE, parameters = TRUE, mixture_indicators = TRUE),
+       init_indicators = 5,
+       init_tau = 1)
+#' @rdname svsample_cpp
+#' @export
+default_general_sv <-
+  list(multi_asis = 5,  # positive integer
+       starting_parameterization = "centered",  # "centered" or "noncentered"
+       update = list(latent_vector = TRUE, parameters = TRUE),
+       init_tau = 1,
+       proposal_diffusion_ken = FALSE)  # FALSE turns on adaptation
 
 #' @rdname svsample
 #' @export
 svtsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
                       priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
-                      priornu = c(2, 50), priorbeta = c(0, 10000), priorlatent0 = "stationary",
-                      thinpara = 1, thinlatent = 1, keeptime = "all", thintime = NULL,
-                      keeptau = FALSE, quiet = FALSE, startpara, startlatent, expert, ...) {
-  svsample(y, draws = draws, burnin = burnin, designmatrix = designmatrix,
+                      priornu = 0.1, priorrho = NA,
+                      priorbeta = c(0, 10000), priorlatent0 = "stationary",
+                      priorspec = NULL, thin = 1,
+                      thinpara = thin, thinlatent = thin, keeptime = "all",
+                      quiet = FALSE, startpara = NULL, startlatent = NULL,
+                      parallel = c("no", "multicore", "snow"),
+                      n_cpus = 1L, cl = NULL, n_chains = 1L,
+                      print_progress = "automatic",
+                      expert = NULL, ...) {
+  svsample(y = y, draws = draws, burnin = burnin, designmatrix = designmatrix,
            priormu = priormu, priorphi = priorphi, priorsigma = priorsigma,
-           priornu = priornu, priorbeta = priorbeta, priorlatent0 = priorlatent0,
-           thinpara = thinpara, thinlatent = thinlatent, keeptime = keeptime, thintime = thintime,
-           keeptau = keeptau, quiet = quiet, startpara = startpara, startlatent = startlatent,
+           priornu = priornu, priorrho = priorrho,
+           priorbeta = priorbeta, priorlatent0 = priorlatent0,
+           priorspec = priorspec,
+           thinpara = thinpara, thinlatent = thinlatent, keeptime = keeptime,
+           quiet = quiet, startpara = startpara, startlatent = startlatent,
+           parallel = parallel,
+           n_cpus = n_cpus, cl = cl, n_chains = n_chains,
+           print_progress = print_progress,
            expert = expert, ...)
 }
 
-
-#' Minimal overhead version of \code{\link{svsample}}.
-#' 
-#' \code{svsample2} is a minimal overhead version of \code{\link{svsample}}
-#' with slightly different default arguments and a simplified return value
-#' structure. It is intended to be used mainly for one-step updates where speed
-#' is an issue, e.g., as a plug-in into other MCMC samplers. Note that
-#' absolutely no input checking is performed, thus this function is to be used
-#' with proper care!
-#' 
-#' As opposed to the ordinary \code{\link{svsample}}, the default values differ
-#' for \code{draws}, \code{burnin}, and \code{quiet}. Note that currently
-#' neither \code{expert} nor \code{\dots{}} arguments are provided.
-#' 
-#' @param y numeric vector containing the data (usually log-returns), which
-#' must not contain zeroes.
-#' @param draws single number greater or equal to 1, indicating the number of
-#' draws after burn-in (see below). Will be automatically coerced to integer.
-#' The defaults value is 1.
-#' @param burnin single number greater or equal to 0, indicating the number of
-#' draws discarded as burn-in. Will be automatically coerced to integer. The
-#' default value is 0.
-#' @param priormu numeric vector of length 2, indicating mean and standard
-#' deviation for the Gaussian prior distribution of the parameter \code{mu},
-#' the level of the log-volatility. The default value is \code{c(0, 100)},
-#' which constitutes a practically uninformative prior for common exchange rate
-#' datasets, stock returns and the like.
-#' @param priorphi numeric vector of length 2, indicating the shape parameters
-#' for the Beta prior distribution of the transformed parameter
-#' \code{(phi + 1) / 2}, where \code{phi} denotes the persistence of the
-#' log-volatility. The default value is \code{c(5, 1.5)}, which constitutes a
-#' prior that puts some belief in a persistent log-volatility but also
-#' encompasses the region where \code{phi} is around 0.
-#' @param priorsigma single positive real number, which stands for the scaling
-#' of the transformed parameter \code{sigma^2}, where \code{sigma} denotes the
-#' volatility of log-volatility. More precisely, \code{sigma^2 ~ priorsigma *
-#' chisq(df = 1)}. The default value is \code{1}, which constitutes a
-#' reasonably vague prior for many common exchange rate datasets, stock returns
-#' and the like.
-#' @param priornu numeric vector of length 2 (or \code{NA}), indicating the
-#' lower and upper bounds for the uniform prior distribution of the parameter
-#' \code{nu}, the degrees-of-freedom parameter of the conditional innovations
-#' t-distribution. The default value is \code{NA}, fixing the
-#' degrees-of-freedom to infinity. This corresponds to conditional standard
-#' normal innovations, the pre-1.1.0 behavior of \pkg{stochvol}.
-#' @param priorlatent0 either a single non-negative number or the string
-#' \code{'stationary'} (the default, also the behavior before version 1.3.0).
-#' When \code{priorlatent0} is equal to \code{'stationary'}, the stationary
-#' distribution of the latent AR(1)-process is used as the prior for the
-#' initial log-volatility \code{h_0}. When \code{priorlatent0} is equal to a
-#' number \eqn{B}, we have \eqn{h_0 \sim N(\mu, B\sigma^2)} a priori.
-#' @param thinpara single number greater or equal to 1, coercible to integer.
-#' Every \code{thinpara}th parameter draw is kept and returned. The default
-#' value is 1, corresponding to no thinning of the parameter draws -- every
-#' draw is stored.
-#' @param thinlatent single number greater or equal to 1, coercible to integer.
-#' Every \code{thinlatent}th latent variable draw is kept and returned. The
-#' default value is 1, corresponding to no thinning of the latent variable
-#' draws, i.e. every draw is kept.
-#' @param thintime \emph{Deprecated.} Use 'keeptime' instead.
-#' @param keeptime Either 'all' (the default) or 'last'. Indicates which latent
-#  volatility draws should be stored.
-#' @param keeptau logical value indicating whether the 'variance inflation
-#' factors' should be stored (used for the sampler with conditional t
-#' innovations only). This may be useful to check at what point(s) in time the
-#' normal disturbance had to be 'upscaled' by a mixture factor and when the
-#' series behaved 'normally'.
-#' @param quiet logical value indicating whether the progress bar and other
-#' informative output during sampling should be omitted. The default value is
-#' \code{TRUE}, implying non-verbose output.
-#' @param startpara \emph{compulsory} named list, containing the starting
-#' values for the parameter draws. \code{startpara} must contain three elements
-#' named \code{mu}, \code{phi}, and \code{sigma}, where \code{mu} is an
-#' arbitrary numerical value, \code{phi} is a real number between \code{-1} and
-#' \code{1}, and \code{sigma} is a positive real number. Moreover, if
-#' \code{priornu} is not \code{NA}, \code{startpara} must also contain an
-#' element named \code{nu} (the degrees of freedom parameter for the
-#' t-innovations).
-#' @param startlatent \emph{compulsory} vector of length \code{length(x$y)},
-#' containing the starting values for the latent log-volatility draws.
-#' @return A list with three components:
-#' \item{para}{\code{3} times
-#' \code{draws} matrix containing the parameter draws. If \code{priornu} is not
-#' \code{NA}, this is a \code{4} times \code{draws} matrix.}
-#' \item{latent}{\code{length(y)} times \code{draws} matrix containing draws of
-#' the latent variables \code{h_1, \dots{}, h_n}.}
-#' \item{latent0}{Vector of
-#' length \code{draws} containing the draw(s) of the initial latent variable
-#' \code{h_0}.}
-#' @note Please refer to the package vignette for an example.
-#' @section Warning: Expert use only! For most applications, the use of
-#' \code{\link{svsample}} is recommended.
-#' @author Gregor Kastner \email{gregor.kastner@@wu.ac.at}
-#' @seealso \code{\link{svsample}}
-#' @keywords models ts
-#' @examples
-#' data(exrates)
-#' aud.price <- subset(exrates,
-#'   as.Date("2010-01-01") <= date & date < as.Date("2011-01-01"),
-#'   "AUD")[,1]
-#' draws <- svsample2(logret(aud.price),
-#'                    draws = 10, burnin = 0,
-#'                    startpara = list(phi = 0.95, mu = -10, sigma = 0.2, rho = -0.1),
-#'                    startlatent = rep_len(-10, length(aud.price) - 1))
+#' @rdname svsample
 #' @export
-svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100),
-                      priorphi = c(5, 1.5), priorsigma = 1, priornu = NA,
-                      priorlatent0 = "stationary", thinpara = 1, thinlatent = 1,
-                      thintime = NULL, keeptime = "all", keeptau = FALSE,
-                      quiet = TRUE, startpara, startlatent) {
-
-  if (priorlatent0 == "stationary") priorlatent0 <- -1L
-
-  # Check whether 'thintime' was used
-  if (!is.null(thintime))
-    stop("Argument 'thintime' is deprecated. Please use 'keeptime' instead.")
-
-  if (keeptime == "all") thintime <- 1L else if (keeptime == "last") thintime <- length(y) else stop("Parameter 'keeptime' must be either 'all' or 'last'.")
-
-  res <- svsample_cpp(y, draws, burnin, matrix(NA), priormu[1], priormu[2]^2,
-                      priorphi[1], priorphi[2], priorsigma, thinlatent,
-                      thintime, startpara, startlatent, keeptau, quiet, 3L, 2L, 10^8,
-                      10^12, -1, TRUE, FALSE, 0, FALSE, priornu, c(NA, NA), priorlatent0)
-
-  res$para <- t(res$para[seq(burnin+thinpara+1, burnin+draws+1, thinpara),,drop=FALSE])
-  if (nrow(res$para) == 3) {
-    rownames(res$para) <- names(res$para) <- c("mu", "phi", "sigma")
-  } else {
-    rownames(res$para) <- names(res$para) <- c("mu", "phi", "sigma", "nu")
-  }
-  res.meanmodel <- "none"
-
-  res
+svlsample <- function(y, draws = 20000, burnin = 2000, designmatrix = NA,
+                      priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
+                      priornu = 0, priorrho = c(4, 4),
+                      priorbeta = c(0, 10000), priorlatent0 = "stationary",
+                      priorspec = NULL, thin = 1,
+                      thinpara = thin, thinlatent = thin, keeptime = "all",
+                      quiet = FALSE, startpara = NULL, startlatent = NULL,
+                      parallel = c("no", "multicore", "snow"),
+                      n_cpus = 1L, cl = NULL, n_chains = 1L,
+                      print_progress = "automatic",
+                      expert = NULL, ...) {
+  svsample(y = y, draws = draws, burnin = burnin, designmatrix = designmatrix,
+           priormu = priormu, priorphi = priorphi, priorsigma = priorsigma,
+           priornu = priornu, priorrho = priorrho,
+           priorbeta = priorbeta, priorlatent0 = priorlatent0,
+           priorspec = priorspec,
+           thinpara = thinpara, thinlatent = thinlatent, keeptime = keeptime,
+           quiet = quiet, startpara = startpara, startlatent = startlatent,
+           parallel = parallel,
+           n_cpus = n_cpus, cl = cl, n_chains = n_chains,
+           print_progress = print_progress,
+           expert = expert, ...)
 }
 
+#' @rdname svsample
+#' @export
+svtlsample <- function(y, draws = 20000, burnin = 2000, designmatrix = NA,
+                       priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
+                       priornu = 0.1, priorrho = c(4, 4),
+                       priorbeta = c(0, 10000), priorlatent0 = "stationary",
+                       priorspec = NULL, thin = 1,
+                       thinpara = thin, thinlatent = thin, keeptime = "all",
+                       quiet = FALSE, startpara = NULL, startlatent = NULL,
+                       parallel = c("no", "multicore", "snow"),
+                       n_cpus = 1L, cl = NULL, n_chains = 1L,
+                       print_progress = "automatic",
+                       expert = NULL, ...) {
+  svsample(y = y, draws = draws, burnin = burnin, designmatrix = designmatrix,
+           priormu = priormu, priorphi = priorphi, priorsigma = priorsigma,
+           priornu = priornu, priorrho = priorrho,
+           priorbeta = priorbeta, priorlatent0 = priorlatent0,
+           priorspec = priorspec,
+           thinpara = thinpara, thinlatent = thinlatent, keeptime = keeptime,
+           quiet = quiet, startpara = startpara, startlatent = startlatent,
+           parallel = parallel,
+           n_cpus = n_cpus, cl = cl, n_chains = n_chains,
+           print_progress = print_progress,
+           expert = expert, ...)
+}
 
-#' Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility
-#' Model with Leverage (SVL)
+#' @rdname svsample
+#' @export
+svsample2 <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
+                      priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
+                      priornu = 0, priorrho = NA,
+                      priorbeta = c(0, 10000), priorlatent0 = "stationary",
+                      thinpara = 1, thinlatent = 1, keeptime = "all",
+                      quiet = FALSE, startpara = NULL, startlatent = NULL) {
+  .Deprecated("svsample_fast_cpp")
+  svsample(y = y, draws = draws, burnin = burnin, designmatrix = designmatrix,
+           priormu = priormu, priorphi = priorphi, priorsigma = priorsigma,
+           priornu = priornu, priorrho = priorrho,
+           priorbeta = priorbeta, priorlatent0 = priorlatent0,
+           thinpara = thinpara, thinlatent = thinlatent, keeptime = keeptime,
+           quiet = quiet, startpara = startpara, startlatent = startlatent)
+}
+
+#' Rolling Estimation of Stochastic Volatility Models
 #' 
-#' \code{svlsample} simulates from the joint posterior distribution of the SVL
-#' parameters \code{mu}, \code{phi}, \code{sigma}, and \code{rho},
-#' along with the latent log-volatilities \code{h_1,...,h_n} and returns the
-#' MCMC draws. If a design matrix is provided, simple Bayesian regression can
-#' also be conducted.
+#' \code{svsample_roll} performs rolling window estimation based on \link{svsample}.
+#' A convenience function for backtesting purposes.
+#' 
+#' Functions \code{svtsample_roll}, \code{svlsample_roll}, and \code{svtlsample_roll} are
+#' wrappers around \code{svsample_roll} with convenient default values for the SV
+#' model with t-errors, leverage, and both t-errors and leverage, respectively.
 #' 
 #' @param y numeric vector containing the data (usually log-returns), which
 #' must not contain zeros. Alternatively, \code{y} can be an \code{svsim}
-#' object. In this case, the returns will be extracted and a warning is thrown.
-#' @param draws single number greater or equal to 1, indicating the number of
-#' draws after burn-in (see below). Will be automatically coerced to integer.
-#' The default value is 10000.
-#' @param burnin single number greater or equal to 0, indicating the number of
-#' draws discarded as burn-in. Will be automatically coerced to integer. The
-#' default value is 1000.
+#' object. In this case, the returns will be extracted and a message is signalled.
 #' @param designmatrix regression design matrix for modeling the mean. Must
 #' have \code{length(y)} rows. Alternatively, \code{designmatrix} may be a
 #' string of the form \code{"arX"}, where \code{X} is a nonnegative integer. To
@@ -779,686 +724,440 @@ svsample2 <- function(y, draws = 1, burnin = 0, priormu = c(0, 100),
 #' AR(1) model, use \code{designmatrix = "ar1"}, and so on. If some elements of
 #' \code{designmatrix} are \code{NA}, the mean is fixed to zero (pre-1.2.0
 #' behavior of \pkg{stochvol}).
-#' @param priormu numeric vector of length 2, indicating mean and standard
-#' deviation for the Gaussian prior distribution of the parameter \code{mu},
-#' the level of the log-volatility. The default value is \code{c(0, 100)},
-#' which constitutes a practically uninformative prior for common exchange rate
-#' datasets, stock returns and the like.
-#' @param priorphi numeric vector of length 2, indicating the shape parameters
-#' for the Beta prior distribution of the transformed parameter
-#' \code{(phi + 1) / 2}, where \code{phi} denotes the persistence of the
-#' log-volatility. The default value is \code{c(5, 1.5)}, which constitutes a
-#' prior that puts some belief in a persistent log-volatility but also
-#' encompasses the region where \code{phi} is around 0.
-#' @param priorsigma single positive real number, which stands for the scaling
-#' of the transformed parameter \code{sigma^2}, where \code{sigma} denotes the
-#' volatility of log-volatility. More precisely, \code{sigma^2 ~ priorsigma *
-#' chisq(df = 1)}. The default value is \code{1}, which constitutes a
-#' reasonably vague prior for many common exchange rate datasets, stock returns
-#' and the like.
-#' @param priorrho numeric vector of length 2, indicating the shape parameters
-#' for the Beta prior distribution of the transformed parameter
-#' \code{(rho + 1) / 2}, where \code{rho} denotes the conditional correlation
-#' between observation and the increment of the
-#' log-volatility. The default value is \code{c(4, 4)}, which constitutes a
-#' slightly informative prior around 0 (the no leverage case) to boost convergence.
-#' @param priorbeta numeric vector of length 2, indicating the mean and
-#' standard deviation of the Gaussian prior for the regression parameters. The
-#' default value is \code{c(0, 10000)}, which constitutes a very vague prior
-#' for many common datasets. Not used if \code{designmatrix} is \code{NA}.
-#' @param thinpara single number greater or equal to 1, coercible to integer.
-#' Every \code{thinpara}th parameter draw is kept and returned. The default
-#' value is 1, corresponding to no thinning of the parameter draws i.e. every
-#' draw is stored.
-#' @param thinlatent single number greater or equal to 1, coercible to integer.
-#' Every \code{thinlatent}th latent variable draw is kept and returned. The
-#' default value is 1, corresponding to no thinning of the latent variable
-#' draws, i.e. every draw is kept.
-#' @param thintime \emph{Deprecated.} Use 'keeptime' instead.
-#' @param keeptime Either 'all' (the default) or 'last'. Indicates which latent
-#  volatility draws should be stored.
-#' @param quiet logical value indicating whether the progress bar and other
-#' informative output during sampling should be omitted. The default value is
-#' \code{FALSE}, implying verbose output.
-#' @param startpara \emph{optional} named list, containing the starting values
-#' for the parameter draws. If supplied, \code{startpara} must contain four
-#' elements named \code{mu}, \code{phi}, \code{sigma}, and \code{rho}, where \code{mu} is
-#' an arbitrary numerical value, \code{phi} is a real number between \code{-1}
-#' and \code{1}, \code{sigma} is a positive real number, and \code{rho} is
-#' a real number between \code{-1} and \code{1}. The default value is equal
-#' to the prior mean.
-#' @param startlatent \emph{optional} vector of length \code{length(y)},
-#' containing the starting values for the latent log-volatility draws. The
-#' default value is \code{rep(-10, length(y))}.
-#' @param expert \emph{optional} named list of expert parameters. For most
-#' applications, the default values probably work best. If
-#' \code{expert} is provided, it may contain the following named elements:
-#' 
-#' \code{parameterization}: Character string containing values \code{"centered"},
-#' and \code{"noncentered"}. Alternatively, it can be a single element character
-#' vector of the form \code{"asisX"}, where \code{X} is an integer, which is
-#' equivalent to \code{rep(c("centered", "noncentered"), X)}.
-#' Defaults to \code{"asis5"}.
-#' 
-#' \code{gammaprior}: Single logical value indicating whether a Gamma prior for
-#' \code{sigma^2} should be used. If set to \code{FALSE}, a moment-matched Inverse Gamma
-#' prior is employed. Defaults to \code{TRUE}.
-#' 
-#' \code{init.with.svsample}: Single integer indicating the length of a ``pre-burnin'' run using
-#' the computationally much more efficient \code{\link{svsample}}. This run helps
-#' in finding good initial values for the latent states, giving \code{svlsample}
-#' a considerable initial boost for convergence. Defaults to \code{1000L}.
-#' 
-#' \code{mhcontrol}: Either a single numeric value specifying the diagonal elements of
-#' a diagonal covariance matrix, or a list with two elements, both single numeric values
-#' (explained later), or a 4x4 covariance matrix. Argument \code{mhcontrol} controls the
-#' proposal density of a Metropolis-Hastings (MH) update step when jointly sampling \code{mu},
-#' \code{phi}, \code{sigma}, and \code{rho}. It specifies the covariance matrix of a
-#' log-random-walk proposal. In case \code{mhcontrol} is a list of length two, its elements
-#' have to be \code{scale} and \code{rho.var}. In this case, the covariance matrix is calculated
-#' from the pre-burnin step with \code{\link{svsample}}, which gives an approximate
-#' posterior structure of the second moment for \code{mu}, \code{phi}, and \code{sigma}.
-#' This covariance matrix is then extended with \code{mhcontrol$rho.var}, specifying the
-#' variance for \code{rho}. The off-diagonal elements belonging to \code{rho} are set
-#' to 0. Finally, the whole covariance matrix is scaled by \code{mhcontrol$scale}. For
-#' this case to work, \code{init.with.svsample} has to be positive.
-#' Defaults to \code{list(scale=0.35, rho.var=0.02)}.
-#' 
-#' \code{correct.latent.draws}: Single logical value indicating whether to correct
-#' the draws obtained from the auxiliary model of Omori, et al. (2007). Defaults
-#' to \code{TRUE}.
+#' @param n_ahead number of time steps to predict from each time window.
+#' @param forecast_length the time horizon at the end of the data set
+#' that is used for backtesting.
+#' @param n_start \emph{optional} the starting time point for backtesting.
+#' Computed from \code{forecast_length} if omitted.
+#' @param refit_every the SV model is refit every \code{refit_every} time steps.
+#' Only the value \code{1} is allowed.
+#' @param refit_window one of \code{"moving"} or \code{"expanding"}. If
+#' \code{"expanding"}, then the start of the time window stays
+#' at the beginning of the data set. If \code{"moving"}, then the
+#' length of the time window is constant throughout backtesting.
+#' @param calculate_quantile vector of numbers between 0 and 1.
+#' These quantiles are predicted using \code{\link{predict.svdraws}}
+#' for each time window.
+#' @param calculate_predictive_likelihood boolean. If \code{TRUE},
+#' the \code{n_ahead} predictive density is evaluated at the 
+#' \code{n_ahead} time observation after each time window.
+#' @param keep_draws boolean. If \code{TRUE}, the \code{svdraws} and
+#' the \code{svpredict} objects are kept from each time window.
+#' @param parallel one of \code{"no"} (default), \code{"multicore"}, or \code{"snow"},
+#' indicating what type of parallellism is to be applied. Option
+#' \code{"multicore"} is not available on Windows.
+#' @param n_cpus \emph{optional} positive integer, the number of CPUs to be used in case of
+#' parallel computations. Defaults to \code{1L}. Ignored if parameter
+#' \code{cl} is supplied and \code{parallel != "snow"}.
+#' @param cl \emph{optional} so-called SNOW cluster object as implemented in package
+#' \code{parallel}. Ignored unless \code{parallel == "snow"}.
 #' @param \dots Any extra arguments will be forwarded to
-#' \code{\link{updatesummary}}, controlling the type of statistics calculated
-#' for the posterior draws.
-#' @return The value returned is a list object of class \code{svldraws} holding
-#' \item{para}{\code{mcmc} object containing the \emph{parameter} draws from
-#' the posterior distribution.}
-#' \item{latent}{\code{mcmc} object containing the
-#' \emph{latent instantaneous log-volatility} draws from the posterior
-#' distribution.}
-#' \item{beta}{\code{mcmc} object containing the \emph{regression coefficient}
-#' draws from the posterior distribution \emph{(optional)}.}
-#' \item{y}{the argument \code{y}.}
-#' \item{runtime}{\code{proc_time} object containing the
-#' run time of the sampler.}
-#' \item{priors}{\code{list} containing the parameter
-#' values of the prior distribution, i.e. the arguments \code{priormu},
-#' \code{priorphi}, \code{priorsigma}, and \code{priorrho}, and potentially
-#' \code{priorbeta}.}
-#' \item{thinning}{\code{list} containing the thinning
-#' parameters, i.e. the arguments \code{thinpara}, \code{thinlatent} and
-#' \code{keeptime}.}
-#' \item{summary}{\code{list} containing a collection of
-#' summary statistics of the posterior draws for \code{para}, and \code{latent}.}
-#' \item{meanmodel}{\code{character} containing information about how \code{designmatrix}
-#' was used.}
+#' \code{\link{svsample}}, controlling the prior setup, the starting values for the
+#' MCMC chains, the number of independent MCMC chains, thinning and other expert
+#' settings.
+#' @return The value returned is a list object of class \code{svdraws_roll}
+#' holding a list item for every time window. The elements of these list items are
+#' \item{indices}{a list object containing two elements: \code{train} is the vector
+#' of indices used for fitting the model, and \code{test} is the vector of indices
+#' used for prediction. The latter is mainly useful if a \code{designmatrix} is provided.}
+#' \item{quantiles}{the input parameter \code{calculate_quantiles}.}
+#' \item{refit_every}{the input parameter \code{refit_every}.}
+#' \item{predictive_likelihood}{present only if \code{calculate_predictive_likelihood}
+#' is \code{TRUE}. Then it is a number, the expected predictive density
+#' of the observation. The expecation is taken over the joint \code{n_ahead} predictive
+#' distribution of all model parameters.}
+#' \item{predictive_quantile}{present only if \code{calculate_quantile} is a non-empty
+#' vector. Then it is a vector of quantiles from the \code{n_ahead} predictive
+#' distribution of \code{y}. It is based on MCMC simulation by using \code{\link{predict}}.}
+#' \item{fit}{present only if \code{keep_draws} is \code{TRUE}. Then it is an
+#' \code{svdraws} object as returned by \code{\link{svsample}}.}
+#' \item{prediction}{present only if \code{keep_draws} is \code{TRUE}. Then it is an
+#' \code{svpredict} object as returned by \code{\link{predict.svdraws}}.}
 #' 
-#' To display the output, use \code{print}, \code{summary} and \code{plot}. The
-#' \code{print} method simply prints the posterior draws (which is very likely
-#' a lot of output); the \code{summary} method displays the summary statistics
-#' currently stored in the object; the \code{plot} method
-#' \code{\link{plot.svdraws}} gives a graphical overview of the posterior
-#' distribution by calling \code{\link{volplot}}, \code{\link{traceplot}} and
-#' \code{\link{densplot}} and displaying the results on a single page.
-#' @note If \code{y} contains zeros, you might want to consider de-meaning your
-#' returns or use \code{designmatrix = "ar0"}. We use the Metropolis-Hastings
-#' algorithm for sampling the latent vector \code{h}, where the proposal is a
-#' draw from an auxiliary mixture approximation model [Omori, et al. (2007)].
-#' We draw the parameters \code{mu}, \code{phi}, \code{sigma}, and \code{rho}
-#' jointly by employing a Metropolis random walk step. By default, we boost the
-#' random walk through the repeated application of the ancillarity-sufficiency
-#' interweaving strategy (ASIS) [Yu, Meng (2011)]. A message in the beginning
-#' of sampling indicates the interweaving strategy used, which can be modified
-#' through parameter \code{expert}.
-#' @author Darjus Hosszejni \email{darjus.hosszejni@@wu.ac.at}
-#' @references
-#' Yu, Y. and Meng, X.-L. (2011).
-#' To Center or not to Center: That is not the Question---An Ancillarity-Sufficiency
-#' Interweaving Strategy (ASIS) for Boosting MCMC Efficiency. \emph{Journal of
-#' Computational and Graphical Statistics}, \bold{20}(3), 531--570,
-#' \url{http://dx.doi.org/10.1198/jcgs.2011.203main}
-#'
-#' Omori, Y. and Chib, S. and Shephard, N. and Nakajima, J. (2007).
-#' Stochastic Volatility with Leverage: Fast and Efficient Likelihood Inference.
-#' \emph{Journal of Econometrics}, \bold{140}(2), 425--449,
-#' \url{http://dx.doi.org/10.1016/j.jeconom.2006.07.008}
-#' @seealso \code{\link{svsim}}, \code{\link{svsample}}, \code{\link{updatesummary}},
-#' \code{\link{predict.svdraws}}, \code{\link{plot.svdraws}}.
+#' To display the output, use \code{print} and \code{summary}. The
+#' \code{print} method simply prints a short summary of the setup;
+#' the \code{summary} method displays the summary statistics
+#' of the backtesting.
+#' @note
+#' The function executes \code{\link{svsample}} \code{(length(y) - arorder - n_ahead - n_start + 1) \%/\% refit_every} times.
+#' @seealso \code{\link{svsim}}, \code{\link{specify_priors}}, \code{\link{svsample}}
 #' @keywords models ts
-#' @examples
-#' \dontrun{
-#' # Example 1
-#' ## Simulate a short SVL process
-#' sim <- svsim(200, mu = -10, phi = 0.95, sigma = 0.2, rho = -0.4)
-#' 
-#' ## Obtain 5000 draws from the sampler (that's not a lot)
-#' draws <- svlsample(sim$y)
-#' 
-#' ## Check out the results
-#' summary(draws)
-#' plot(draws, simobj = sim)
-#' 
-#' 
-#' # Example 2
-#' ## AR(1) structure for the mean
-#' data(exrates)
-#' len <- 1200
-#' ahead <- 100
-#' y <- head(exrates$USD, len)
-#' 
-#' ## Fit AR(1)-SVL model to EUR-USD exchange rates
-#' res <- svlsample(y, designmatrix = "ar1")
-#' 
-#' ## Use predict.svdraws to obtain predictive distributions
-#' preddraws <- predict(res, steps = ahead)
-#' 
-#' ## Calculate predictive quantiles
-#' predquants <- apply(preddraws$y, 2, quantile, c(.1, .5, .9))
-#' 
-#' ## Visualize
-#' expost <- tail(head(exrates$USD, len+ahead), ahead)
-#' ts.plot(y, xlim = c(length(y)-4*ahead, length(y)+ahead),
-#' 	       ylim = range(c(predquants, expost, tail(y, 4*ahead))))
-#' for (i in 1:3) {
-#'   lines((length(y)+1):(length(y)+ahead), predquants[i,],
-#'         col = 3, lty = c(2, 1, 2)[i])
-#' }
-#' lines((length(y)+1):(length(y)+ahead), expost,
-#'       col = 2)
-#' 
-#' 
-#' # Example 3
-#' ## Predicting USD based on JPY and GBP in the mean
-#' data(exrates)
-#' len <- 1200
-#' ahead <- 30
-#' ## Calculate log-returns
-#' logreturns <- apply(exrates[, c("USD", "JPY", "GBP")], 2,
-#'                     function (x) diff(log(x)))
-#' logretUSD <- logreturns[2:(len+1), "USD"]
-#' regressors <- cbind(1, as.matrix(logreturns[1:len, ]))  # lagged by 1 day
-#' 
-#' ## Fit SV model to EUR-USD exchange rates
-#' res <- svlsample(logretUSD, designmatrix = regressors)
-#' 
-#' ## Use predict.svdraws to obtain predictive distributions
-#' predregressors <- cbind(1, as.matrix(logreturns[(len+1):(len+ahead), ]))
-#' preddraws <- predict(res, steps = ahead,
-#'                      newdata = predregressors)
-#' predprice <- exrates[len+2, "USD"] * exp(t(apply(preddraws$y, 1, cumsum)))
-#' 
-#' ## Calculate predictive quantiles
-#' predquants <- apply(predprice, 2, quantile, c(.1, .5, .9))
-#' 
-#' ## Visualize
-#' priceUSD <- exrates[3:(len+2), "USD"]
-#' expost <- exrates[(len+3):(len+ahead+2), "USD"]
-#' ts.plot(priceUSD, xlim = c(len-4*ahead, len+ahead+1),
-#' 	       ylim = range(c(expost, predquants, tail(priceUSD, 4*ahead))))
-#' for (i in 1:3) {
-#'   lines(len:(len+ahead), c(tail(priceUSD, 1), predquants[i,]),
-#'         col = 3, lty = c(2, 1, 2)[i])
-#' }
-#' lines(len:(len+ahead), c(tail(priceUSD, 1), expost),
-#'       col = 2)
-#' }
+#' @example inst/examples/svsample_roll.R
 #' @export
-svlsample <- function (y, draws = 10000, burnin = 1000, designmatrix = NA,
-                       priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1,
-                       priorrho = c(4, 4), priorbeta = c(0, 10000),
-                       thinpara = 1, thinlatent = 1, thintime = NULL, keeptime = "all",
-                       quiet = FALSE, startpara, startlatent, expert, ...) {
-  # Some error checking for y
+svsample_roll <- function (y, designmatrix = NA,
+                           n_ahead = 1, forecast_length = 500,
+                           n_start = NULL, refit_every = 1,
+                           refit_window = c("moving", "expanding"),
+                           calculate_quantile = c(0.01),
+                           calculate_predictive_likelihood = TRUE,
+                           keep_draws = FALSE,
+                           parallel = c("no", "multicore", "snow"),
+                           n_cpus = 1L, cl = NULL,
+                           ...) {
+
+  # Validation
+  ## y
   if (inherits(y, "svsim")) {
-    y <- y[["y"]]
-    warning("Extracted data vector from 'svsim'-object.")
+    simobj <- y
+    y <- simobj[["y"]]
+    message("Extracted data vector from 'svsim'-object.")
+  } else {
+    simobj <- NULL
   }
-  if (!is.numeric(y)) stop("Argument 'y' (data vector) must be numeric.")
-  if (length(y) < 2) stop("Argument 'y' (data vector) must contain at least two elements.")
+  assert_numeric(y, "Argument 'y'")
+  assert_gt(length(y), 1, "The length of the input time series 'y'")
 
   y_orig <- y
   y <- as.vector(y)
-  
-  myoffset <- if (any(is.na(designmatrix)) && any(y^2 == 0)) 1.0e-8 else 0
-  if (myoffset > 0) {
-    warning(paste("Argument 'y' (data vector) contains zeros. I am adding an offset constant of size ", myoffset, " to do the auxiliary mixture sampling. If you want to avoid this, you might consider de-meaning the returns before calling this function.", sep=""))
-  }
 
-  # Some error checking for draws
-  if (!is.numeric(draws) || length(draws) != 1 || draws < 1) {
-    stop("Argument 'draws' (number of MCMC iterations after burn-in) must be a single number >= 1.")
-  } else {
-    draws <- as.integer(draws)
-  }
-
-  # Some error checking for burnin
-  if (!is.numeric(burnin) || length(burnin) != 1 || burnin < 0) {
-    stop("Argument 'burnin' (burn-in period) must be a single number >= 0.")
-  } else {
-    burnin <- as.integer(burnin)
-  }
-
-  # Some error checking for designmatrix
-  meanmodel <- "matrix"
+  ## regression
   arorder <- 0L
   if (any(is.na(designmatrix))) {
-    designmatrix <- matrix(NA)
-    meanmodel <- "none"
+    designmatrix <- matrix(NA_real_)
   } else {
     if (any(grep("ar[0-9]+$", as.character(designmatrix)[1]))) {
       arorder <- as.integer(gsub("ar", "", as.character(designmatrix)))
-      if (length(y) <= (arorder + 1L)) stop("Time series 'y' is to short for this AR process.")
-      designmatrix <- matrix(rep(1, length(y) - arorder), ncol = 1)
-      colnames(designmatrix) <- c("const")
-      meanmodel <- "constant"
-      if (arorder >= 1) {
-        for (i in seq_len(arorder)) {
-          oldnames <- colnames(designmatrix)
-          designmatrix <- cbind(designmatrix, y[(arorder-i+1):(length(y)-i)])
-          colnames(designmatrix) <- c(oldnames, paste0("ar", i))
+      if (length(y) <= arorder + 1) {
+        stop("Time series 'y' is too short for this AR process.")
+      }
+    } else if (is.character(designmatrix)) {
+      stop("Argument 'designmatrix' must be a numeric matrix or an AR-specification.")
+    } else {
+      assert_numeric(designmatrix, "The processed argument 'designmatrix'")
+      if (!is.matrix(designmatrix)) {
+        designmatrix <- matrix(designmatrix, ncol = 1)
+      }
+      if (NROW(designmatrix) != length(y)) {
+        stop("Number of columns of argument 'designmatrix' must be equal to length(y).")
+      }
+    }
+  }
+
+  refit_window <- match.arg(refit_window)
+  if (!identical(refit_every, 1)) {
+    stop("Parameter 'refit_every' has to be 1")
+  }
+
+  assert_numeric(n_ahead, "Parameter 'n_ahead'")
+  n_ahead <- as.integer(n_ahead)
+  assert_single(n_ahead, "Parameter 'n_ahead'")
+  assert_positive(n_ahead, "Parameter 'n_ahead'")
+
+  assert_numeric(forecast_length, "Parameter 'forecast_length'")
+  forecast_length <- as.integer(forecast_length)
+  assert_single(forecast_length, "Parameter 'forecast_length'")
+  assert_positive(forecast_length, "Parameter 'forecast_length'")
+
+  if (!is.null(n_start)) {
+    assert_numeric(n_start, "Parameter 'n_start'")
+    n_start <- as.integer(n_start)
+    assert_single(n_start, "Parameter 'n_start'")
+    assert_gt(n_start, 2, "Parameter 'n_start'")
+  } else {
+    n_start <- length(y) - forecast_length + 1
+  }
+
+  assert_numeric(calculate_quantile, "Parameter 'calculate_quantile'")
+  assert_positive(calculate_quantile, "Parameter 'calculate_quantile'")
+  assert_lt(calculate_quantile, 1, "Parameter 'calculate_quantile'")
+
+  assert_logical(calculate_predictive_likelihood, "Parameter 'calculate_predictive_likelihood'")
+  assert_single(calculate_predictive_likelihood, "Parameter 'calculate_predictive_likelihood'")
+
+  assert_logical(keep_draws, "Parameter 'keep_draws'")
+  assert_single(keep_draws, "Parameter 'keep_draws'")
+
+  ## parallel (strongly influenced by package 'boot')
+  parallel <- match.arg(parallel)
+  have_mc <- FALSE
+  have_snow <- FALSE
+  if (parallel != "no") {
+    if (parallel == "multicore") {
+      have_mc <- .Platform$OS.type != "windows"
+    } else if (parallel == "snow") {
+      have_snow <- TRUE
+    }
+    if (!have_mc && !have_snow) {
+      n_cpus <- 1L
+    }
+    requireNamespace("parallel")
+  }
+  create_cluster <- isTRUE(is.null(cl))
+  have_cluster <- isTRUE(inherits(cl, "SOCKcluster"))
+  if (have_snow && !create_cluster && !have_cluster) {
+    warning("Unknown type of input in parameter 'cl'. Should be either NULL or of class 'cluster' created by the parallel package. Turning off parallelism")
+    cl <- NULL
+    have_mc <- FALSE
+    have_snow <- FALSE
+    n_cpus <- 1L
+  }
+  if (have_snow && n_cpus == 1L && !have_cluster) {
+    warning("Inconsistent settings for parallel execution: snow parallelism combined with n_cpus == 1 and no supplied cluster object. Turning off parallelism")
+    have_snow <- FALSE
+  }
+  if (have_mc && n_cpus == 1L) {
+    warning("Inconsistent settings for parallel execution: multicore parallelism combined with n_cpus == 1. Turning off parallelism")
+    have_mc <- FALSE
+  }
+  n_workers <- if (have_snow) {
+    if (have_cluster) {
+      length(cl)
+    } else {
+      n_cpus
+    }
+  } else {
+    1L
+  }
+  n_chains <- n_cpus
+
+  # Define accessors for the windows
+  choose_indices <- function (i) {
+    n <- length(y)
+    train_begin <- if (refit_window == "expanding") {
+      1
+    } else {
+      1 + (i-1) * refit_every
+    }
+    train_end <- train_begin + n_start - 2 + arorder
+    list(train = seq(train_begin, train_end),
+         test = seq(train_end+1, train_end+n_ahead))
+  }
+
+  # Define parallel function
+  sampling_function <- function (i) {
+    ind <- choose_indices(i)
+    arguments$y <- y[ind$train]
+    arguments$designmatrix <- if (any(is.na(designmatrix)) || is.character(designmatrix)) designmatrix else designmatrix[ind$train, ]
+    arguments$parallel <- "no"
+    arguments$print_progress <- n_windows
+    svdraws <- do.call(stochvol::svsample, arguments)
+    new_data <- if (is.character(designmatrix) || any(is.na(designmatrix))) {
+      NULL
+    } else {
+      designmatrix[ind$test, ]
+    }
+    pred <- predict(svdraws, steps = n_ahead, newdata = new_data)
+    predobs <- predy(pred, "concat")
+    predvol <- predvola(pred, "concat")
+    predquant <- if (length(calculate_quantile) > 0) {
+      quantile(predobs[, n_ahead, drop=TRUE], prob = calculate_quantile)
+    } else {
+      NULL
+    }
+    predlik <- if (calculate_predictive_likelihood) {
+      last_test_ind <- tail(ind$test, 1)
+      regression_mean <- if (is.character(designmatrix)) {
+        if (arorder == 0L) {
+          svbeta(svdraws, "concat")
+        } else {
+          c(1, y[last_test_ind - seq(arorder, 1, by = -1)]) %*% t(svbeta(svdraws, "concat"))
         }
-        y <- y[-(1:arorder)]
-        meanmodel <- paste0("ar", arorder)
-      }
-    }
-    if (!is.numeric(designmatrix)) stop("Argument 'designmatrix' must be a numeric matrix or an AR-specification.")
-    if (!is.matrix(designmatrix)) {
-      designmatrix <- matrix(designmatrix, ncol = 1)
-    }
-    if (!nrow(designmatrix) == length(y)) stop("Number of columns of argument 'designmatrix' must be equal to length(y).")
-  }
-
-  # Some error checking for the prior parameters 
-  if (!is.numeric(priormu) || length(priormu) != 2) {
-    stop("Argument 'priormu' (mean and variance for the Gaussian prior for mu) must be numeric and of length 2.")
-  }
-
-  if (!is.numeric(priorphi) || length(priorphi) != 2) {
-    stop("Argument 'priorphi' (shape1 and shape2 parameters for the Beta prior for (phi + 1) / 2) must be numeric and of length 2.")
-  }
-
-  if (!is.numeric(priorsigma) || length(priorsigma) != 1 || priorsigma <= 0) {
-    stop("Argument 'priorsigma' (scaling of the chi-squared(df = 1) prior for sigma^2) must be a single number > 0.")
-  }
-
-  if (!is.numeric(priorrho) || length(priorrho) != 2) {
-    stop("Argument 'priorrho' (shape1 and shape2 parameters for the Beta prior for (rho + 1) / 2) must be numeric and of length 2.")
-  }
-
-  if (!is.numeric(priorbeta) || length(priorbeta) != 2) {
-    stop("Argument 'priorbeta' (means and sds for the independent Gaussian priors for beta) must be numeric and of length 2.")
-  }
-
-  # Some error checking for thinpara
-  if (!is.numeric(thinpara) || length(thinpara) != 1 || thinpara < 1) {
-    stop("Argument 'thinpara' (thinning parameter for mu, phi, sigma, and rho) must be a single number >= 1.")
-  } else {
-    thinpara <- as.integer(thinpara)
-  }
-
-  # Some error checking for thinlatent
-  if (!is.numeric(thinlatent) || length(thinlatent) != 1 || thinlatent < 1) {
-    stop("Argument 'thinlatent' (thinning parameter for the latent log-volatilities) must be a single number >= 1.")
-  } else {
-    thinlatent <- as.integer(thinlatent)
-  }
-
-  # Check whether 'thintime' was used
-  if (!is.null(thintime))
-    stop("Argument 'thintime' is deprecated. Please use 'keeptime' instead.")
-
-  # Some error checking for keeptime
-  if (length(keeptime) != 1L || !is.character(keeptime) || !(keeptime %in% c("all", "last"))) {
-    stop("Parameter 'keeptime' must be either 'all' or 'last'.")
-  } else {
-    if (keeptime == "all") thintime <- 1L else if (keeptime == "last") thintime <- length(y)
-  }
-
-  # Some input checking for startpara
-  startparadefault <- list(mu = priormu[1],
-                           phi = 2 * (priorphi[1] / sum(priorphi)) - 1,
-                           sigma = priorsigma,
-                           rho = 2 * (priorrho[1] / sum(priorrho)) - 1)
-  if (missing(startpara)) {
-    startpara <- startparadefault
-  } else {
-    if (!is.list(startpara))
-      stop("Argument 'startpara' must be a list. Its elements must be named 'mu', 'phi', 'sigma', and 'rho'.")
-
-    if (!is.numeric(startpara[["mu"]]))
-      stop('Argument \'startpara[["mu"]]\' must exist and be numeric.')
-
-    if (!is.numeric(startpara[["phi"]]))
-      stop('Argument \'startpara[["phi"]]\' must exist and be numeric.')
-
-    if (abs(startpara[["phi"]]) >= 1)
-      stop('Argument \'startpara[["phi"]]\' must be between -1 and 1.')
-
-    if (!is.numeric(startpara[["sigma"]]))
-      stop('Argument \'startpara[["sigma"]]\' must exist and be numeric.')
-
-    if (startpara[["sigma"]] <= 0)
-      stop('Argument \'startpara[["sigma"]]\' must be positive.')
-
-    if (!is.numeric(startpara[["rho"]]))
-      stop('Argument \'startpara[["rho"]]\' must exist and be numeric.')
-
-    if (abs(startpara[["rho"]]) >= 1)
-      stop('Argument \'startpara[["rho"]]\' must be between -1 and 1.')
-  }
-
-  # Some input checking for startlatent
-  if (missing(startlatent)) {
-    startlatent <- rep(-10, length(y))
-  } else {
-    if (!is.numeric(startlatent) | length(startlatent) != length(y))
-      stop("Argument 'startlatent' must be numeric and of the same length as the data 'y'.")
-  }
-
-  # Some error checking for expert
-  strategies <- c("centered", "noncentered")
-  expertdefault <- list(parameterization = rep(strategies, 5),  # default: ASISx5
-                        mhcontrol = list(scale=0.35, rho.var=0.02),
-                        gammaprior = TRUE,
-                        init.with.svsample = 1000L,
-                        correct.latent.draws = TRUE)
-  if (missing(expert)) {
-    parameterization <- expertdefault$parameterization
-    mhcontrol <- expertdefault$mhcontrol
-    gammaprior <- expertdefault$gammaprior
-    init.with.svsample <- expertdefault$init.with.svsample
-    correct.latent.draws <- expertdefault$correct.latent.draws
-  } else {
-    expertnames <- names(expert)
-    if (!is.list(expert) || is.null(expertnames) || any(expertnames == ""))
-      stop("Argument 'expert' must be a named list with nonempty names.")
-    if (length(unique(expertnames)) != length(expertnames))
-      stop("No duplicate elements allowed in argument 'expert'.")
-    allowednames <- c("parameterization", "mhcontrol", "gammaprior", "init.with.svsample", "correct.latent.draws")
-    exist <- pmatch(expertnames, allowednames)
-    if (any(is.na(exist)))
-      stop(paste("Illegal element '", paste(expertnames[is.na(exist)], collapse="' and '"), "' in argument 'expert'.", sep=''))
-
-    expertenv <- list2env(expert) 
-
-    if (exists("parameterization", expertenv)) {
-      if (!is.character(expert[["parameterization"]]))
-        stop("Argument 'parameterization' must be either a vector of 'centered', 'noncentered' values or a character string of form 'asis#' with # a positive integer.")
-      nmatches <- grep("^asis[1-9][0-9]*$", expert[["parameterization"]])
-      if (length(nmatches) == 0) {
-        parameterization <- match.arg(expert[["parameterization"]], strategies, several.ok = TRUE)
-      } else if (length(nmatches) == 1) {
-        parameterization <- rep(strategies, nmatches)
+      } else if (any(is.na(designmatrix))) {
+        0
       } else {
-        parameterization <- NA
+        designmatrix[last_test_ind, ] %*% t(svbeta(svdraws, "concat"))
       }
-      if (!all(parameterization %in% strategies)) {
-        stop("Argument 'parameterization' must be either a vector of 'centered', 'noncentered' values or a character string of form 'asis#' with # a positive integer.")
+      mean(dnorm(y[last_test_ind], mean = regression_mean, sd = predvol[, n_ahead]))
+    } else {
+      NULL
+    }
+    ret <- if (keep_draws) {
+      attr(svdraws, "args") <- arguments
+      attr(pred, "args") <- list(steps = n_ahead, newdata = new_data)
+      list(fit = svdraws,
+           prediction = pred)
+    } else {
+      list()
+    }
+    ret$predicted_quantile <- predquant
+    ret$predictive_likelihood <- predlik
+    ret$indices <- ind
+    ret$quantiles <- calculate_quantile
+    ret$refit_window <- refit_window
+    ret
+  }
+
+  # Call sampler
+  n_windows <- (length(y) - arorder - n_ahead - n_start + 1) %/% refit_every
+  arguments <- list(...)
+  runtime <- system.time(reslist <-
+    if ((n_cpus > 1L || have_cluster) && (have_mc || have_snow)) {
+      if (have_mc) {
+        parallel::mclapply(seq_len(n_windows), sampling_function, mc.cores = n_cpus)
+      } else if (have_snow) {
+        if (create_cluster) {
+          cat("\nStarting cluster...\n")
+          cl <- parallel::makePSOCKcluster(rep("localhost", n_workers), outfile = NULL)
+        }
+        RNGkind(kind = "L'Ecuyer-CMRG")
+        parallel::clusterSetRNGStream(cl)
+        parallel::clusterEvalQ(cl, library(stochvol))
+        parallel::clusterExport(cl, c("y", "designmatrix",
+                                      "arorder", "refit_window", "refit_every",
+                                      "n_start", "n_ahead", "choose_indices",
+                                      "n_windows", "calculate_quantile",
+                                      "calculate_predictive_likelihood",
+                                      "keep_draws", "arguments"),
+                                envir = environment())
+        if (create_cluster) {
+          reslist <- tryCatch(parallel::parLapply(cl, seq_len(n_windows), sampling_function),
+                              finally = {
+                                parallel::stopCluster(cl)
+                                cat("\nCluster stopped.\n")
+                                })
+          reslist
+        } else {
+          parallel::parLapply(cl, seq_len(n_windows), sampling_function)
+        }
       }
     } else {
-      parameterization <- expertdefault$parameterization
+      lapply(seq_len(n_windows), sampling_function)
     }
-
-    if (exists("mhcontrol", expertenv)) {
-      mhcontrol <- expert[["mhcontrol"]]
-      if (!((is.numeric(mhcontrol) &&
-           ((length(mhcontrol) == 1 && mhcontrol > 0) ||
-            (is.matrix(mhcontrol) && NROW(mhcontrol) == 4 && NCOL(mhcontrol) == 4))) ||
-            (is.list(mhcontrol) && length(mhcontrol) == 2 &&
-            all(sort(c("row.var", "scale")) == sort(names(mhcontrol))) &&
-            is.numeric(mhcontrol$row.var) && mhcontrol$row.var > 0 &&
-            is.numeric(mhcontrol$scale) && mhcontrol$scale > 0)))
-        stop("Argument 'mhcontrol' must be a single positive number, a list of two of positive numbers with names 'scale' and 'row.var', or a 4x4 covariance matrix.")
-    } else {
-      mhcontrol <- expertdefault$mhcontrol
-    }
-
-    if (exists("gammaprior", expertenv)) {
-      gammaprior <- expert[["gammaprior"]]
-      if (!is.logical(gammaprior)) stop("Argument 'gammaprior' must be TRUE or FALSE.")
-    } else {
-      gammaprior <- expertdefault$gammaprior
-    }
-
-    if (exists("init.with.svsample", expertenv)) {
-      init.with.svsample <- expert[["init.with.svsample"]]
-      if (!is.numeric(init.with.svsample) || length(init.with.svsample) != 1 || init.with.svsample < 0)
-        stop("Argument 'init.with.svsample' must be a single non-negative number.")
-      if (length(mhcontrol) == 2 && init.with.svsample == 0)
-        stop("In case argument 'init.with.svsample' is set to 0, 'mhcontrol' cannot be of length 2.")
-      init.with.svsample <- as.integer(init.with.svsample)
-    } else {
-      init.with.svsample <- expertdefault$init.with.svsample
-    }
-
-    if (exists("correct.latent.draws", expertenv)) {
-      correct.latent.draws <- expert[["correct.latent.draws"]]
-      if (!is.logical(correct.latent.draws)) stop("Argument 'correct.latent.draws' must be TRUE or FALSE.")
-    } else {
-      correct.latent.draws <- expertdefault$correct.latent.draws
-    }
-  }
-  
-  if (init.with.svsample > 0L) {
-    if (!quiet) {
-      cat(paste0("\nInitial values: calling 'svsample' with ", init.with.svsample, " iter. Series length is ", length(y), ".\n"), file=stderr())
-      flush.console()
-    }
-
-    init.runtime <- system.time({
-      init.res <- svsample(y,  # not svsample2 because of 'designmatrix'
-                           draws = as.integer(init.with.svsample/2),
-                           burnin = as.integer(init.with.svsample/2),
-                           designmatrix = designmatrix, priormu = priormu,
-                           priorphi = priorphi, priorsigma = priorsigma,
-                           priornu = NA, priorbeta = priorbeta,
-                           priorlatent0 = "stationary",
-                           thinpara = 1L, thinlatent = 1L, keeptime = "all",
-                           keeptau = FALSE, quiet = TRUE,
-                           startpara = startpara[c("phi", "mu", "sigma")],
-                           startlatent = startlatent,
-                           expert = list(gammaprior = gammaprior,
-                                         parameterization = "GIS_C"),
-                           quantiles = .5, esspara = FALSE,  # fast updatesummary
-                           esslatent = FALSE)
-    })
-
-    if (!quiet) {
-      cat(paste0("Initial values: time taken by 'svsample': ", round(init.runtime["elapsed"], 3), " seconds.\n"), file=stderr())
-    }
-
-    startpara[c("mu", "phi", "sigma")] <-
-      as.list(apply(init.res$para, 2, median))
-    startlatent <- as.numeric(apply(init.res$latent, 2, median))
-  }
-
-  if (length(mhcontrol) == 1) {
-    cov.mh <- diag(mhcontrol, nrow = 4, ncol = 4)
-  } else if (length(mhcontrol) == 2) {  # in this case init.with.svsample > 0
-    # calculate proposal covariance matrix (in the order of svlsample)
-    phi.t <- 0.5*log(2/(1-init.res$para[, "phi"])-1)
-    #rho.t we don't have
-    sigma2.t <- 2*log(init.res$para[, "sigma"])
-    mu.t <- init.res$para[, "mu"]
-    cov.mh <- cov(cbind(phi.t, rho.t = 0, sigma2.t, mu.t))
-    cov.mh[2, 2] <- mhcontrol$rho.var
-    cov.mh <- mhcontrol$scale*cov.mh
-  } else {  # mhcontrol is a covariance matrix already
-    cov.mh <- mhcontrol
-  }
-
-  renameparam <- c("centered" = "C", "noncentered" = "NC")
-  if (!quiet) {
-    cat(paste("\nCalling ", asisprint(renameparam[parameterization], renameparam), " MCMC sampler with ", draws+burnin, " iter. Series length is ", length(y), ".\n",sep=""), file=stderr())
-    flush.console()
-  }
-
-  if (.Platform$OS.type != "unix") myquiet <- TRUE else myquiet <- quiet  # Hack to prevent console flushing problems with Windows
-
-  runtime <- system.time({
-    res <- svlsample_cpp(y, draws, burnin, designmatrix, thinpara, thinlatent, thintime,
-                                 startpara, startlatent,
-                                 priorphi[1], priorphi[2], priorrho[1], priorrho[2],
-                                 0.5, 0.5/priorsigma, priormu[1], priormu[2],
-                                 priorbeta[1], priorbeta[2], !myquiet,
-                                 myoffset, t(chol(cov.mh)), gammaprior, correct.latent.draws,
-                                 parameterization, FALSE)
-  })
-
-  if (any(is.na(res))) stop("Sampler returned NA. This is most likely due to bad input checks and shouldn't happen. Please report to package maintainer.")
-
-  if (!quiet) {
-    cat("Timing (elapsed): ", file=stderr())
-    cat(runtime["elapsed"], file=stderr())
-    cat(" seconds.\n", file=stderr())
-    cat(round((draws+burnin)/runtime[3]), "iterations per second.\n\n", file=stderr())
-    cat("Converting results to coda objects... ", file=stderr())
-  }
-  
-  colnames(res$para) <- c("mu", "phi", "sigma", "rho")
-  if (keeptime == "all") colnames(res$latent) <- paste0('h_', arorder + seq_along(y)) else if (keeptime == "last") colnames(res$latent) <- paste0('h_', arorder + length(y))
-  # create svldraws class
-  res$runtime <- runtime
-  res$y <- y_orig
-  res$para <- coda::mcmc(res$para, burnin+thinpara, burnin+draws, thinpara)
-  res$latent <- coda::mcmc(res$latent, burnin+thinlatent, burnin+draws, thinlatent)
-  res$thinning <- list(para = thinpara, latent = thinlatent, time = keeptime)
-  res$priors <- list(mu = priormu, phi = priorphi, sigma = priorsigma, rho = priorrho, gammaprior = gammaprior)
-  if (!any(is.na(designmatrix))) {
-    res$beta <- coda::mcmc(res$beta, burnin+thinpara, burnin+draws, thinpara)
-    colnames(res$beta) <- paste0("b_", 0:(NCOL(designmatrix)-1))
-    res$priors <- c(res$priors, "beta" = list(priorbeta), "designmatrix" = list(designmatrix))
-  } else {
-    res$beta <- NULL
-  }
-  res$meanmodel <- meanmodel
-  class(res) <- c("svldraws", "svdraws")
-
-  if (!quiet) {
-    cat("Done!\n", file=stderr())
-    cat("Summarizing posterior draws... ", file=stderr())
-  }
-  res <- updatesummary(res, ...)
-
-  if (!quiet) cat("Done!\n\n", file=stderr())
-  res
+  )
+  class(reslist) <- "svdraws_roll"
+  reslist
 }
 
-#' Minimal overhead version of \code{\link{svlsample}}.
-#' 
-#' \code{svlsample2} is a minimal overhead version of \code{\link{svlsample}}
-#' with slightly different default arguments and a simplified return value
-#' structure. It is intended to be used mainly for one-step updates where speed
-#' is an issue, e.g., as a plug-in into other MCMC samplers. Note that
-#' absolutely no input checking is performed, thus this function is to be used
-#' with proper care!
-#' 
-#' As opposed to the ordinary \code{\link{svlsample}}, the default values differ
-#' for \code{draws}, \code{burnin}, and \code{quiet}. Note that currently
-#' neither \code{expert} nor \code{\dots{}} arguments are provided.
-#' 
-#' @param y numeric vector containing the data (usually log-returns), which
-#' must not contain zeros. Alternatively, \code{y} can be an \code{svsim}
-#' object. In this case, the returns will be extracted and a warning is thrown.
-#' @param draws single number greater or equal to 1, indicating the number of
-#' draws after burn-in (see below). Will be automatically coerced to integer.
-#' The default value is 1.
-#' @param burnin single number greater or equal to 0, indicating the number of
-#' draws discarded as burn-in. Will be automatically coerced to integer. The
-#' default value is 0.
-#' @param priormu numeric vector of length 2, indicating mean and standard
-#' deviation for the Gaussian prior distribution of the parameter \code{mu},
-#' the level of the log-volatility. The default value is \code{c(0, 100)},
-#' which constitutes a practically uninformative prior for common exchange rate
-#' datasets, stock returns and the like.
-#' @param priorphi numeric vector of length 2, indicating the shape parameters
-#' for the Beta prior distribution of the transformed parameter
-#' \code{(phi + 1) / 2}, where \code{phi} denotes the persistence of the
-#' log-volatility. The default value is \code{c(5, 1.5)}, which constitutes a
-#' prior that puts some belief in a persistent log-volatility but also
-#' encompasses the region where \code{phi} is around 0.
-#' @param priorsigma single positive real number, which stands for the scaling
-#' of the transformed parameter \code{sigma^2}, where \code{sigma} denotes the
-#' volatility of log-volatility. More precisely, \code{sigma^2 ~ priorsigma *
-#' chisq(df = 1)}. The default value is \code{1}, which constitutes a
-#' reasonably vague prior for many common exchange rate datasets, stock returns
-#' and the like.
-#' @param priorrho numeric vector of length 2, indicating the shape parameters
-#' for the Beta prior distribution of the transformed parameter
-#' \code{(rho + 1) / 2}, where \code{rho} denotes the conditional correlation
-#' between observation and the increment of the
-#' log-volatility. The default value is \code{c(4, 4)}, which constitutes a
-#' slightly informative prior around 0 (the no leverage case) to boost convergence.
-#' @param thinpara single number greater or equal to 1, coercible to integer.
-#' Every \code{thinpara}th parameter draw is kept and returned. The default
-#' value is 1, corresponding to no thinning of the parameter draws i.e. every
-#' draw is stored.
-#' @param thinlatent single number greater or equal to 1, coercible to integer.
-#' Every \code{thinlatent}th latent variable draw is kept and returned. The
-#' default value is 1, corresponding to no thinning of the latent variable
-#' draws, i.e. every draw is kept.
-#' @param thintime \emph{Deprecated.} Use 'keeptime' instead.
-#' @param keeptime Either 'all' (the default) or 'last'. Indicates which latent
-#  volatility draws should be stored.
-#' @param quiet logical value indicating whether the progress bar and other
-#' informative output during sampling should be omitted. The default value is
-#' \code{TRUE}.
-#' @param startpara \emph{compulsory} named list, containing the starting values
-#' for the parameter draws. It must contain four
-#' elements named \code{mu}, \code{phi}, \code{sigma}, and \code{rho}, where \code{mu} is
-#' an arbitrary numerical value, \code{phi} is a real number between \code{-1}
-#' and \code{1}, \code{sigma} is a positive real number, and \code{rho} is
-#' a real number between \code{-1} and \code{1}.
-#' @param startlatent \emph{compulsory} vector of length \code{length(y)},
-#' containing the starting values for the latent log-volatility draws.
-#' @return The value returned is a list object holding
-#' \item{para}{matrix of dimension \code{4 x draws} containing
-#' the \emph{parameter} draws from the posterior distribution.}
-#' \item{latent}{matrix of dimension \code{length(y) x draws} containing the
-#' \emph{latent instantaneous log-volatility} draws from the posterior
-#' distribution.}
-#' \item{meanmodel}{always equals \code{"none"}}
-#' @author Darjus Hosszejni \email{darjus.hosszejni@@wu.ac.at}
-#' @seealso \code{\link{svlsample}}
-#' @keywords models ts
-#' @examples
-#' data(exrates)
-#' aud.price <- subset(exrates,
-#'   as.Date("2010-01-01") <= date & date < as.Date("2011-01-01"),
-#'   "AUD")[,1]
-#' draws <- svlsample2(logret(aud.price),
-#'                     draws = 10, burnin = 0,
-#'                     startpara = list(phi=0.95, mu=-10, sigma=0.2, rho=-0.1),
-#'                     startlatent = rep_len(-10, length(aud.price)-1))
+#' @rdname svsample_roll
 #' @export
-svlsample2 <- function(y, draws = 1, burnin = 0,
-                       priormu = c(0, 100), priorphi = c(5, 1.5), priorsigma = 1, priorrho = c(4, 4),
-                       thinpara = 1, thinlatent = 1, thintime = NULL, keeptime = "all",
-                       quiet = TRUE, startpara, startlatent) {
-
-  # Check whether 'thintime' was used
-  if (!is.null(thintime))
-    stop("Argument 'thintime' is deprecated. Please use 'keeptime' instead.")
-
-  if (keeptime == "all") thintime <- 1L else if (keeptime == "last") thintime <- length(y) else stop("Parameter 'keeptime' must be either 'all' or 'last'.")
-
-  res <- svlsample_cpp(y, draws, burnin, matrix(NA), thinpara, thinlatent, thintime,
-                               startpara, startlatent,
-                               priorphi[1], priorphi[2], priorrho[1], priorrho[2],
-                               0.5, 0.5/priorsigma, priormu[1], priormu[2],
-                               0, 1, !quiet,
-                               0, diag(0.1, nrow = 4, ncol = 4), TRUE,
-                               TRUE, rep(c("centered", "noncentered"), 5), FALSE)
-
-  res$para <- t(res$para)
-  res$latent <- t(res$latent)
-  res$meanmodel <- "none"
-  rownames(res$para) <- c("mu", "phi", "sigma", "rho")
-  res
+svtsample_roll <- function (y, designmatrix = NA,
+                            n_ahead = 1, forecast_length = 500,
+                            n_start = NULL, refit_every = 1,
+                            refit_window = c("moving", "expanding"),
+                            calculate_quantile = c(0.01),
+                            calculate_predictive_likelihood = TRUE,
+                            keep_draws = FALSE,
+                            parallel = c("no", "multicore", "snow"),
+                            n_cpus = 1L, cl = NULL,
+                            ...) {
+  local_svsample_roll <- function (y, designmatrix,
+                                   n_ahead, forecast_length,
+                                   n_start, refit_every,
+                                   refit_window,
+                                   calculate_quantile,
+                                   calculate_predictive_likelihood,
+                                   keep_draws,
+                                   parallel,
+                                   n_cpus, cl,
+                                   priornu = 0.1,  # set prior
+                                   ...) {
+    svsample_roll(y = y, designmatrix = designmatrix,
+                  n_ahead = n_ahead, forecast_length = forecast_length,
+                  n_start = n_start, refit_every = refit_every,
+                  refit_window = refit_window,
+                  calculate_quantile = calculate_quantile,
+                  calculate_predictive_likelihood = calculate_predictive_likelihood,
+                  keep_draws = keep_draws,
+                  parallel = parallel,
+                  n_cpus = n_cpus, cl = cl,
+                  priornu = priornu,
+                  ...)
+  }
+  local_svsample_roll(y = y, designmatrix = designmatrix,
+                      n_ahead = n_ahead, forecast_length = forecast_length,
+                      n_start = n_start, refit_every = refit_every,
+                      refit_window = refit_window,
+                      calculate_quantile = calculate_quantile,
+                      calculate_predictive_likelihood = calculate_predictive_likelihood,
+                      keep_draws = keep_draws,
+                      parallel = parallel,
+                      n_cpus = n_cpus, cl = cl,
+                      ...)
 }
 
+#' @rdname svsample_roll
+#' @export
+svlsample_roll <- function (y, designmatrix = NA,
+                            n_ahead = 1, forecast_length = 500,
+                            n_start = NULL, refit_every = 1,
+                            refit_window = c("moving", "expanding"),
+                            calculate_quantile = c(0.01),
+                            calculate_predictive_likelihood = TRUE,
+                            keep_draws = FALSE,
+                            parallel = c("no", "multicore", "snow"),
+                            n_cpus = 1L, cl = NULL,
+                            ...) {
+  local_svsample_roll <- function (y, designmatrix,
+                                   n_ahead, forecast_length,
+                                   n_start, refit_every,
+                                   refit_window,
+                                   calculate_quantile,
+                                   calculate_predictive_likelihood,
+                                   keep_draws,
+                                   parallel,
+                                   n_cpus, cl,
+                                   priorrho = c(4, 4),  # set prior
+                                   ...) {
+    svsample_roll(y = y, designmatrix = designmatrix,
+                  n_ahead = n_ahead, forecast_length = forecast_length,
+                  n_start = n_start, refit_every = refit_every,
+                  refit_window = refit_window,
+                  calculate_quantile = calculate_quantile,
+                  calculate_predictive_likelihood = calculate_predictive_likelihood,
+                  keep_draws = keep_draws,
+                  parallel = parallel,
+                  n_cpus = n_cpus, cl = cl,
+                  priorrho = priorrho,
+                  ...)
+  }
+  local_svsample_roll(y = y, designmatrix = designmatrix,
+                      n_ahead = n_ahead, forecast_length = forecast_length,
+                      n_start = n_start, refit_every = refit_every,
+                      refit_window = refit_window,
+                      calculate_quantile = calculate_quantile,
+                      calculate_predictive_likelihood = calculate_predictive_likelihood,
+                      keep_draws = keep_draws,
+                      parallel = parallel,
+                      n_cpus = n_cpus, cl = cl,
+                      ...)
+}
 
-.svsample <- function (...) {
-  .Defunct(new = "svsample2")
+#' @rdname svsample_roll
+#' @export
+svtlsample_roll <- function (y, designmatrix = NA,
+                             n_ahead = 1, forecast_length = 500,
+                             n_start = NULL, refit_every = 1,
+                             refit_window = c("moving", "expanding"),
+                             calculate_quantile = c(0.01),
+                             calculate_predictive_likelihood = TRUE,
+                             keep_draws = FALSE,
+                             parallel = c("no", "multicore", "snow"),
+                             n_cpus = 1L, cl = NULL,
+                             ...) {
+  local_svsample_roll <- function (y, designmatrix,
+                                   n_ahead, forecast_length,
+                                   n_start, refit_every,
+                                   refit_window,
+                                   calculate_quantile,
+                                   calculate_predictive_likelihood,
+                                   keep_draws,
+                                   parallel,
+                                   n_cpus, cl,
+                                   priornu = 0.1,  # set prior
+                                   priorrho = c(4, 4),  # set prior
+                                   ...) {
+    svsample_roll(y = y, designmatrix = designmatrix,
+                  n_ahead = n_ahead, forecast_length = forecast_length,
+                  n_start = n_start, refit_every = refit_every,
+                  refit_window = refit_window,
+                  calculate_quantile = calculate_quantile,
+                  calculate_predictive_likelihood = calculate_predictive_likelihood,
+                  keep_draws = keep_draws,
+                  parallel = parallel,
+                  n_cpus = n_cpus, cl = cl,
+                  priornu = priornu,
+                  priorrho = priorrho,
+                  ...)
+  }
+  local_svsample_roll(y = y, designmatrix = designmatrix,
+                      n_ahead = n_ahead, forecast_length = forecast_length,
+                      n_start = n_start, refit_every = refit_every,
+                      refit_window = refit_window,
+                      calculate_quantile = calculate_quantile,
+                      calculate_predictive_likelihood = calculate_predictive_likelihood,
+                      keep_draws = keep_draws,
+                      parallel = parallel,
+                      n_cpus = n_cpus, cl = cl,
+                      ...)
 }
 

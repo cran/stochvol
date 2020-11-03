@@ -4,8 +4,12 @@
 \alias{updatesummary}
 \title{Updating the Summary of MCMC Draws}
 \usage{
-updatesummary(x, quantiles = c(0.05, 0.5, 0.95), esspara = TRUE,
-  esslatent = FALSE)
+updatesummary(
+  x,
+  quantiles = c(0.05, 0.5, 0.95),
+  esspara = TRUE,
+  esslatent = FALSE
+)
 }
 \arguments{
 \item{x}{\code{svdraws} object.}
@@ -67,13 +71,12 @@ don't forget to overwrite the old object if this is want you intend to do.
 See the examples below for more details.
 }
 \examples{
-
 ## Here is a baby-example to illustrate the idea.
 ## Simulate an SV time series of length 51 with default parameters:
 sim <- svsim(51)
 
 ## Draw from the posterior:
-res <- svsample(sim$y, draws = 7000, priorphi = c(10, 1.5))
+res <- svsample(sim$y, draws = 2000, priorphi = c(10, 1.5))
 
 ## Check out the results:
 summary(res)
@@ -89,9 +92,6 @@ plot(res)
 
 }
 \seealso{
-\code{\link{svsample}}, \code{\link{svlsample}}
-}
-\author{
-Gregor Kastner \email{gregor.kastner@wu.ac.at}
+\code{\link{svsample}}
 }
 \keyword{utilities}

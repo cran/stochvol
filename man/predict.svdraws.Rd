@@ -2,12 +2,9 @@
 % Please edit documentation in R/utilities_svdraws.R
 \name{predict.svdraws}
 \alias{predict.svdraws}
-\alias{predict.svldraws}
 \title{Prediction of Future Returns and Log-Volatilities}
 \usage{
 \method{predict}{svdraws}(object, steps = 1L, newdata = NULL, ...)
-
-\method{predict}{svldraws}(object, steps = 1L, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{\code{svdraws} or \code{svldraws} object.}
@@ -16,16 +13,17 @@
 steps to forecast.}
 
 \item{newdata}{\emph{only in case d) of the description} corresponds to input
-parameter \code{designmatrix} in \code{\link{svsample}} and \code{\link{svlsample}}.
+parameter \code{designmatrix} in \code{\link{svsample}}.
 A matrix of regressors with number of rows equal to parameter \code{steps}.}
 
 \item{\dots}{currently ignored.}
 }
 \value{
 Returns an object of class \code{svpredict}, a list containing
-two elements:
-\item{h}{\code{mcmc} object of simulations from the predictive density of \code{h_(n+1),...,h_(n+steps)}}
-\item{y}{\code{mcmc} object of simulations from the predictive density of \code{y_(n+1),...,y_(n+steps)}}
+three elements:
+\item{vol}{\code{mcmc.list} object of simulations from the predictive density of the standard deviations \code{sd_(n+1),...,sd_(n+steps)}}
+\item{h}{\code{mcmc.list} object of simulations from the predictive density of \code{h_(n+1),...,h_(n+steps)}}
+\item{y}{\code{mcmc.list} object of simulations from the predictive density of \code{y_(n+1),...,y_(n+steps)}}
 }
 \description{
 Simulates draws from the predictive density of the returns and the latent log-volatility
@@ -86,9 +84,9 @@ simreg <- svsim(len, rho = -0.42)
 simreg$y <- simreg$y + as.numeric(regressors \%*\% betas)
 
 ## Obtain 12000 draws
-drawsreg <- svlsample(simreg$y, draws = 12000, burnin = 3000,
+drawsreg <- svsample(simreg$y, draws = 12000, burnin = 3000,
   designmatrix = regressors, priormu = c(-10, 1), priorphi = c(20, 1.5),
-  priorsigma = 0.2)
+  priorsigma = 0.2, priorrho = c(4, 4))
 
 ## Predict 5 days ahead using new regressors
 predlen <- 5L
@@ -101,11 +99,9 @@ summary(forereg$y)
 plot(forereg)
 plot(drawsreg, forecast = forereg)
 }
+
 }
 \seealso{
 \code{\link{plot.svdraws}}, \code{\link{volplot}}.
-}
-\author{
-Gregor Kastner \email{gregor.kastner@wu.ac.at}
 }
 \keyword{ts}

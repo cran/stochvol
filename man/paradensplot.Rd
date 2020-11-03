@@ -4,12 +4,19 @@
 \alias{paradensplot}
 \title{Probability Density Function Plot for the Parameter Posteriors}
 \usage{
-paradensplot(x, showobs = TRUE, showprior = TRUE, showxlab = TRUE,
-  mar = c(1.9, 1.9, 1.9, 0.5), mgp = c(2, 0.6, 0), simobj = NULL,
-  ...)
+paradensplot(
+  x,
+  showobs = TRUE,
+  showprior = TRUE,
+  showxlab = TRUE,
+  mar = c(1.9, 1.9, 1.9, 0.5),
+  mgp = c(2, 0.6, 0),
+  simobj = NULL,
+  ...
+)
 }
 \arguments{
-\item{x}{\code{svdraws} or \code{svldraws} object.}
+\item{x}{\code{svdraws} object.}
 
 \item{showobs}{logical value, indicating whether the observations should be
 displayed along the x-axis. If many draws have been obtained, the default
@@ -56,12 +63,12 @@ You can call this function directly, but it is more commonly called by
 the \code{\link{plot.svdraws}} method.
 }
 \seealso{
-Other plotting: \code{\link{paratraceplot.svdraws}},
-  \code{\link{paratraceplot}}, \code{\link{plot.svdraws}},
-  \code{\link{plot.svpredict}}, \code{\link{volplot}}
-}
-\author{
-Gregor Kastner \email{gregor.kastner@wu.ac.at}
+Other plotting: 
+\code{\link{paratraceplot.svdraws}()},
+\code{\link{paratraceplot}()},
+\code{\link{plot.svdraws}()},
+\code{\link{plot.svpredict}()},
+\code{\link{volplot}()}
 }
 \concept{plotting}
 \keyword{hplot}
