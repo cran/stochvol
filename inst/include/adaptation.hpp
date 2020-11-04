@@ -1,5 +1,5 @@
-#ifndef ADAPTATION_H
-#define ADAPTATION_H
+#ifndef _STOCHVOL_ADAPTATION_H_
+#define _STOCHVOL_ADAPTATION_H_
 
 #include <RcppArmadillo.h>
 #include <vector>
@@ -27,12 +27,12 @@ namespace stochvol {
         const double _target_acceptance = 0.234,
         const double _lambda = 0.1,
         const double _scale = 0.1,
-        const double _C = 0.99)
+        const double _C_in = 0.99)  // _C is probably a macro on Solaris
       : dim{_dim},
         target_acceptance{_target_acceptance},
         lambda{_lambda},
         alpha{calculate_alpha(_lambda)},
-        C{_C},
+        C{_C_in},
         scale{_scale},
         state(_dim, _batch_size),
         draws_batch(dim, _batch_size),
@@ -204,8 +204,8 @@ namespace stochvol {
         const double _target_acceptance = 0.234,
         const double _lambda = 0.1,
         const double _scale = 0.1,
-        const double _C = 0.99)
-      : centered(_dim, _memory_size, _batch_size, _target_acceptance, _lambda, _scale, _C),
+        const double _C_in = 0.99)  // _C is probably a macro on Solaris
+      : centered(_dim, _memory_size, _batch_size, _target_acceptance, _lambda, _scale, _C_in),
         noncentered(centered) { }
 
     inline
