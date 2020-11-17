@@ -33,7 +33,7 @@
 // Helper functions for the main sampler
 
 #include <RcppArmadillo.h>
-#include <type_definitions.h>
+#include <expert.hpp>
 #include <adaptation.hpp>
 
 namespace stochvol {
@@ -83,8 +83,7 @@ inline
 void clamp_log_data2(
     arma::vec& log_data2) {
   // -100 ~= log(4e-44)
-  static const auto my_clamp { [](double& value) { value = std::max(value, -100.0); } };
-  std::for_each(log_data2.begin(), log_data2.end(), my_clamp);
+  std::for_each(log_data2.begin(), log_data2.end(), [](double& value) { value = std::max(value, -100.0); });
 }
 
 namespace fast_sv {
@@ -306,6 +305,16 @@ ExpertSpec_GeneralSV list_to_general_sv(
 ExpertSpec_FastSV list_to_fast_sv(
     const Rcpp::List& list,
     const bool interweave);
+
+// Transform an R adaptation list into its corresponding
+// C++ object
+Adaptation list_to_adaptation (
+    const Rcpp::List& list);
+
+// Transform an R adaptation collection list into
+// its corresponding C++ object
+AdaptationCollection list_to_adaptationcollection (
+    const Rcpp::List& list);
 
 }
 
