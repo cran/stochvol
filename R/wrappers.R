@@ -228,11 +228,11 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
   y_orig <- y
   y <- as.vector(y)
 
-  myoffset <- if (any(is.na(designmatrix)) && any(y^2 == 0)) {
-    warning("Argument 'y' (data vector) contains values very close to zero. I am applying an offset constant of size ", myoffset, " to do the auxiliary mixture sampling. If you want to avoid this, you might consider de-meaning the returns before calling this function.")
-    sd(y)/10000
+  if (any(is.na(designmatrix)) && any(y^2 == 0)) {
+    myoffset <- sd(y)/10000
+    message("Argument 'y' (data vector) contains values very close to zero. I am applying an offset constant of size ", myoffset, " to do the auxiliary mixture sampling. If you want to avoid this, you might consider de-meaning the returns before calling this function.")
   } else {
-    0
+    myoffset <- 0
   }
 
   ## draws

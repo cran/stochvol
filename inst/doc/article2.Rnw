@@ -168,15 +168,15 @@ financial time series%
   WU Vienna University of Economics and Business\\
   Welthandelsplatz~1 / Building D4 / Level 4\\
   1020 Vienna, Austria\\
-  E-mail: \email{darjus.hosszejni@wu.ac.at}\\
+  E-mail: \email{Darjus.Hosszejni@wu.ac.at}\\
   URL: \url{http://statmath.wu.ac.at/~hosszejni/}
   \\\\
   Gregor Kastner\\
   Department of Statistics\\
   University of Klagenfurt\\
-  Universitätsstraße 65-67\\
+  Universit\"atsstraße 65-67\\
   9020 Klagenfurt, Austria\\
-  E-mail: \email{gregor.kastner@aau.at}\\
+  E-mail: \email{Gregor.Kastner@aau.at}\\
   URL: \url{http://statmath.wu.ac.at/~kastner/}
 }
 
@@ -193,12 +193,6 @@ knitr::opts_chunk$set(prompt = TRUE,
                       cache = TRUE,
                       fig.path = "Figures/article-")
 base::options(continue = "+  ", prompt = "R> ")
-#used_packages <- c("LSD", "RColorBrewer")
-#for (p in used_packages) {
-#  if (!require(p, character.only = TRUE)) {
-#    install.packages(p)
-#  }
-#}
 @
 
 %% -- Introduction -------------------------------------------------------------
@@ -213,6 +207,9 @@ base::options(continue = "+  ", prompt = "R> ")
 %% - Unless the expansions of abbreviations are proper names (like "Journal
 %%   of Statistical Software" above) they should be in sentence case (like
 %%   "generalized linear models" below).
+
+\section*{Preface}
+This vignette corresponds to a pre-print of the same name~\citep{thisarxiv}. At the time of this writing, the vignette excludes the fifth chapter in order to reduce dependency on other packages, and the version at hand might receive minor updates as time goes by. Further information about citing \pkg{stochvol} can be obtained in \proglang{R} by installing the package, e.g., through \code{install.packages("stochvol")}, and calling \code{citation("stochvol")}.
 
 \section[Introduction]{Introduction} \label{sec:intro}
 
@@ -551,7 +548,7 @@ Using this model, we test whether the exchange rate follows a random walk with S
 In this case, we expect the posteriors of $\beta_0$ and $\beta_1$ to concentrate around 0 and 1, respectively.
 
 In order to estimate this AR(1)-SV model, we need to prepare the input $\yvec$ as a \code{numeric} sequence of length $\leny$ and pass it as the first input argument to \fct{svsample} as follows:
-<<presvrunmodel, eval=TRUE, echo=FALSE>>=
+<<presvrunmodel, eval=TRUE, results='hide'>>=
 set.seed(1)
 library("stochvol")
 data("exrates")
@@ -580,7 +577,7 @@ Otherwise, there is little evidence for high kurtosis.
 
 We compute the log returns by applying \fct{logret} on the previously calculated \code{CHF\_price}.
 Then, to estimate the constant mean model with heavy tailed SV residuals, we pass the vector of log returns to \fct{svtsample} with \code{designmatrix} set to \code{"ar0"}.
-<<presvtrunmodel, echo=FALSE, eval=TRUE, dependson="presvrunmodel">>=
+<<presvtrunmodel, results='hide', eval=TRUE, dependson="presvrunmodel">>=
 set.seed(2)
 CHF_logret <- 100 * logret(CHF_price)
 @
@@ -608,7 +605,7 @@ set.seed(3)
 X <- cbind(constant = 1,
   100 * logret(exrates$USD[ind]),
   100 * logret(exrates$JPY[ind]))
-res_svl <- svlsample(CHF_logret, designmatrix = X)
+res_svl <- svlsample(CHF_logret, designmatrix = X, thin = 10)
 @
 
 \subsection{Visualizing the results} \label{sec:svuse2}
@@ -862,9 +859,8 @@ The default behavior is to store every draw after the burn-in phase.
 
 \section[The factorstochvol package]{The \factorstochvol{} package} \label{sec:factorstochvol}
 
-Temporarily removed from the vignette to resolve CRAN interdependencies between \stochvol{} and \factorstochvol{}.
-For more information on this chapter, visit the vignette of \factorstochvol{}, please.
-%%
+For more information on \factorstochvol{}, please see the vignette attached to the package~\citep{factorstochvol}.
+%
 %The most common workflow of using \factorstochvol{} for fitting multivariate factor SV models consists of the following steps:
 %(1) Prepare the data,
 %(2) decide on an identification structure,
@@ -1207,14 +1203,13 @@ For more information on this chapter, visit the vignette of \factorstochvol{}, p
 %round(apply(predcor1[,,,1], 1:2, sd), 2)
 %@
 %
-%To obtain draws from the posterior predictive distribution of new data points, one can simply draw from the corresponding scale mixture of multivariate normals. In Figure~\ref{fig:preddist}, these draws are visualized via \fct{heatpairs} from \pkg{LSD} \citep{LSD}.
+%To obtain draws from the posterior predictive distribution of new data points, one can simply draw from the corresponding mixture of multivariate normals. In Figure~\ref{fig:preddist}, these draws are visualized via \fct{heatpairs} from \pkg{LSD} \citep{LSD}.
 %<<preddist, fig.height = 6, fig.width = 9, echo = TRUE>>=
 %set.seed(5)
 %predcov_1 <- predcov(res)
-%effectivedraws <- res$config$draws/res$config$thin
-%preddraws <- matrix(NA_real_, effectivedraws, m)
+%preddraws <- t(res$beta)
 %for (i in seq_len(effectivedraws))
-%  preddraws[i,] <- chol(predcov_1[,,i,1]) %*% rnorm(m)
+%  preddraws[i,] <- res$beta[,i] + chol(predcov_1[,,i,1]) %*% rnorm(m)
 %plotlims <- quantile(preddraws, c(0.01, 0.99))
 %LSD::heatpairs(preddraws, labels = colnames(y),
 %  cor.cex = 1.5, gap = 0.3, xlim = plotlims, ylim = plotlims)
@@ -1240,7 +1235,7 @@ We extended the work of~\citet{kastner2016dealing} to other SV models, including
 We showcased the features that are the most important to end users in \proglang{R}: estimation through the sampler functions, visualization, summary, and prediction methods.
 Due to its more involved nature, however, we did not include the description of the \proglang{C++} interface.
 Two functions called \fct{update\_fast\_sv} and \fct{update\_general\_sv} are exported and programmers have the possibility to access the samplers in \stochvol{} directly from \proglang{C++} after linking to the compiled package.
-For usage examples, see the implementations of \factorstochvol{} or \pkg{shrinkTVP} \citep{shrinktvp}.
+For usage examples, see the implementations of \factorstochvol{} or \pkg{shrinkTVP}~\citep{shrinktvp}.
 %
 \bibliography{ref}
 

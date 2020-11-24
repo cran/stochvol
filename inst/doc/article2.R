@@ -9,14 +9,8 @@ knitr::opts_chunk$set(prompt = TRUE,
                       cache = TRUE,
                       fig.path = "Figures/article-")
 base::options(continue = "+  ", prompt = "R> ")
-#used_packages <- c("LSD", "RColorBrewer")
-#for (p in used_packages) {
-#  if (!require(p, character.only = TRUE)) {
-#    install.packages(p)
-#  }
-#}
 
-## ----presvrunmodel, eval=TRUE, echo=FALSE-------------------------------------
+## ----presvrunmodel, eval=TRUE, results='hide'---------------------------------
 set.seed(1)
 library("stochvol")
 data("exrates")
@@ -33,7 +27,7 @@ CHF_price <- exrates$CHF[ind]
 #  CHF_price <- exrates$CHF[ind]
 #  res_sv <- svsample(CHF_price, designmatrix = "ar1")
 
-## ----presvtrunmodel, echo=FALSE, eval=TRUE, dependson="presvrunmodel"---------
+## ----presvtrunmodel, results='hide', eval=TRUE, dependson="presvrunmodel"-----
 set.seed(2)
 CHF_logret <- 100 * logret(CHF_price)
 
@@ -47,7 +41,7 @@ set.seed(3)
 X <- cbind(constant = 1,
   100 * logret(exrates$USD[ind]),
   100 * logret(exrates$JPY[ind]))
-res_svl <- svlsample(CHF_logret, designmatrix = X)
+res_svl <- svlsample(CHF_logret, designmatrix = X, thin = 10)
 
 ## ----svlplot, echo=TRUE, dependson="svlrunmodel", fig.height=4----------------
 plot(res_svl, showobs = FALSE,

@@ -3,7 +3,7 @@ Package: stochvol
 Type: Package
 Title: Efficient Bayesian Inference for Stochastic Volatility (SV)
         Models
-Version: 3.0.2
+Version: 3.0.3
 Authors@R: c(
 	person("Darjus", "Hosszejni", role = c("aut", "cre"), email = "darjus.hosszejni@wu.ac.at", comment = c(ORCID = "0000-0002-3803-691X")),
 	person("Gregor", "Kastner", role = c("aut"), email = "gregor.kastner@aau.at", comment = c(ORCID = "0000-0002-8237-8271")))
@@ -12,16 +12,15 @@ License: GPL (>= 2)
 Depends: R (>= 3.5)
 Imports: Rcpp (>= 1.0), coda (>= 0.19), graphics, stats, utils,
         grDevices
-Suggests: mvtnorm (>= 1.1-1), testthat (>= 2.3.2), magrittr (>= 1.5),
-        knitr, LSD, RColorBrewer, zoo
+Suggests: mvtnorm, testthat (>= 2.3.2), knitr
 LinkingTo: Rcpp, RcppArmadillo (>= 0.9.900)
 RoxygenNote: 7.1.1
 BuildResaveData: best
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2020-11-17 15:23:07 UTC; dhosszejni
+Packaged: 2020-11-24 13:50:50 UTC; dhosszejni
 Author: Darjus Hosszejni [aut, cre] (<https://orcid.org/0000-0002-3803-691X>),
   Gregor Kastner [aut] (<https://orcid.org/0000-0002-8237-8271>)
 Maintainer: Darjus Hosszejni <darjus.hosszejni@wu.ac.at>
 Repository: CRAN
-Date/Publication: 2020-11-17 17:50:03 UTC
+Date/Publication: 2020-11-24 15:30:02 UTC

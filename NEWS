@@ -1,3 +1,6 @@
+Changes in Version 3.0.3:
+  - Bugfix in 'svsample' when the input data contains 0s
+
 Changes in Version 3.0.2:
   - Bugfix in the fast access functions 'svsample_fast_cpp' and
     'svsample_general_cpp': dimensions were incorrect
