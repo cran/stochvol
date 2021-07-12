@@ -1,21 +1,21 @@
 #  #####################################################################################
 #  R package stochvol by
-#     Gregor Kastner Copyright (C) 2013-2020
-#     Darjus Hosszejni Copyright (C) 2019-2020
-#  
+#     Gregor Kastner Copyright (C) 2013-2021
+#     Darjus Hosszejni Copyright (C) 2019-2021
+#
 #  This file is part of the R package stochvol: Efficient Bayesian
 #  Inference for Stochastic Volatility Models.
-#  
+#
 #  The R package stochvol is free software: you can redistribute it
 #  and/or modify it under the terms of the GNU General Public License
 #  as published by the Free Software Foundation, either version 2 or
 #  any later version of the License.
-#  
+#
 #  The R package stochvol is distributed in the hope that it will be
 #  useful, but WITHOUT ANY WARRANTY; without even the implied warranty
 #  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 #  General Public License for more details.
-#  
+#
 #  You should have received a copy of the GNU General Public License
 #  along with the R package stochvol. If that is not the case, please
 #  refer to <http://www.gnu.org/licenses/>.
@@ -23,20 +23,21 @@
 
 #' Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility (SV)
 #' Model
-#' 
+#'
 #' \code{svsample} simulates from the joint posterior distribution of the SV
 #' parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu} and \code{rho}),
 #' along with the latent log-volatilities \code{h_0,...,h_n} and returns the
 #' MCMC draws. If a design matrix is provided, simple Bayesian regression can
-#' also be conducted.
-#' 
+#' also be conducted. For similar functionality with a formula interface,
+#' see \code{\link{svlm}}.
+#'
 #' Functions \code{svtsample}, \code{svlsample}, and \code{svtlsample} are
 #' wrappers around \code{svsample} with convenient default values for the SV
 #' model with t-errors, leverage, and both t-errors and leverage, respectively.
-#' 
+#'
 #' For details concerning the algorithm please see the paper by Kastner and
-#' Frühwirth-Schnatter (2014).
-#' 
+#' Frühwirth-Schnatter (2014) and Hosszejni and Kastner (2019).
+#'
 #' @param y numeric vector containing the data (usually log-returns), which
 #' must not contain zeros. Alternatively, \code{y} can be an \code{svsim}
 #' object. In this case, the returns will be extracted and a message is signalled.
@@ -110,13 +111,10 @@
 #' informative output during sampling should be omitted. The default value is
 #' \code{FALSE}, implying verbose output.
 #' @param startpara \emph{optional} named list, containing the starting values
-#' for the parameter draws. If supplied, \code{startpara} must contain three
-#' elements named \code{mu}, \code{phi}, and \code{sigma}, where \code{mu} is
-#' an arbitrary numerical value, \code{phi} is a real number between \code{-1}
-#' and \code{1}, and \code{sigma} is a positive real number. Moreover, if
-#' \code{priornu} is not \code{0}, \code{startpara} must also contain an
-#' element named \code{nu} (the degrees of freedom parameter for the
-#' t-innovations). The default value is equal to the prior mean. 
+#' for the parameter draws. If supplied, \code{startpara} may contain
+#' elements named \code{mu}, \code{phi}, \code{sigma}, \code{nu}, \code{rho},
+#' \code{beta}, and \code{latent0}.
+#' The default value is equal to the prior mean.
 #' In case of parallel execution with \code{cl} provided, \code{startpara} can be a list of
 #' named lists that initialize the parallel chains.
 #' @param startlatent \emph{optional} vector of length \code{length(y)},
@@ -182,7 +180,7 @@
 #' and \code{latent0}.}
 #' \item{meanmodel}{\code{character} containing information about how \code{designmatrix}
 #' was employed.}
-#' 
+#'
 #' To display the output, use \code{print}, \code{summary} and \code{plot}. The
 #' \code{print} method simply prints the posterior draws (which is very likely
 #' a lot of output); the \code{summary} method displays the summary statistics
@@ -192,14 +190,19 @@
 #' \code{\link{densplot}} and displaying the results on a single page.
 #' @note If \code{y} contains zeros, you might want to consider de-meaning your
 #' returns or use \code{designmatrix = "ar0"}.
-#' 
+#'
 #' \code{\link{svsample2}} is deprecated.
-#' @seealso \code{\link{svsim}}, \code{\link{specify_priors}}
+#' @seealso \code{\link{svlm}}, \code{\link{svsim}}, \code{\link{specify_priors}}
 #' @references Kastner, G. and Frühwirth-Schnatter, S. (2014).
 #' Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC
 #' estimation of stochastic volatility models. \emph{Computational Statistics &
 #' Data Analysis}, \bold{76}, 408--423,
 #' \doi{10.1016/j.csda.2013.01.002}.
+#'
+#' Hosszejni, D. and Kastner, G. (2019).
+#' Approaches Toward the Bayesian Estimation of the Stochastic Volatility Model with Leverage.
+#' \emph{Springer Proceedings in Mathematics & Statistics}, \bold{296}, 75--83,
+#' \doi{10.1007/978-3-030-30611-3_8}.
 #' @keywords models ts
 #' @example inst/examples/svsample.R
 #' @export
@@ -418,7 +421,8 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
     (inherits(priorspec$sigma2, "sv_gamma") && priorspec$sigma2$shape == 0.5)
 
   # Pick sampling function
-  myquiet <- (.Platform$OS.type != "unix") || quiet  # Hack to prevent console flushing problems with Windows
+  #myquiet <- (.Platform$OS.type != "unix") || quiet  # Hack to prevent console flushing problems with Windows
+  myquiet <- quiet
   ## print progress
   print_settings <- if (is.character(print_progress)) {
     print_progress <- match.arg(print_progress, c("automatic", "progressbar", "iteration"))
@@ -597,7 +601,7 @@ svsample <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
 }
 
 #' Default Values for the Expert Settings
-#' 
+#'
 #' These functions define meaningful expert settings for
 #' argument \code{expert} of \code{\link{svsample}} and its derivatives.
 #' The result of \code{get_default_fast_sv} should be provided as
@@ -766,14 +770,14 @@ svsample2 <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
 }
 
 #' Rolling Estimation of Stochastic Volatility Models
-#' 
+#'
 #' \code{svsample_roll} performs rolling window estimation based on \link{svsample}.
 #' A convenience function for backtesting purposes.
-#' 
+#'
 #' Functions \code{svtsample_roll}, \code{svlsample_roll}, and \code{svtlsample_roll} are
 #' wrappers around \code{svsample_roll} with convenient default values for the SV
 #' model with t-errors, leverage, and both t-errors and leverage, respectively.
-#' 
+#'
 #' @param y numeric vector containing the data (usually log-returns), which
 #' must not contain zeros. Alternatively, \code{y} can be an \code{svsim}
 #' object. In this case, the returns will be extracted and a message is signalled.
@@ -800,7 +804,7 @@ svsample2 <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
 #' These quantiles are predicted using \code{\link{predict.svdraws}}
 #' for each time window.
 #' @param calculate_predictive_likelihood boolean. If \code{TRUE},
-#' the \code{n_ahead} predictive density is evaluated at the 
+#' the \code{n_ahead} predictive density is evaluated at the
 #' \code{n_ahead} time observation after each time window.
 #' @param keep_draws boolean. If \code{TRUE}, the \code{svdraws} and
 #' the \code{svpredict} objects are kept from each time window.
@@ -834,7 +838,7 @@ svsample2 <- function(y, draws = 10000, burnin = 1000, designmatrix = NA,
 #' \code{svdraws} object as returned by \code{\link{svsample}}.}
 #' \item{prediction}{present only if \code{keep_draws} is \code{TRUE}. Then it is an
 #' \code{svpredict} object as returned by \code{\link{predict.svdraws}}.}
-#' 
+#'
 #' To display the output, use \code{print} and \code{summary}. The
 #' \code{print} method simply prints a short summary of the setup;
 #' the \code{summary} method displays the summary statistics
@@ -1222,3 +1226,209 @@ svtlsample_roll <- function (y, designmatrix = NA,
                       ...)
 }
 
+
+#' Markov Chain Monte Carlo (MCMC) Sampling for the Stochastic Volatility (SV)
+#' Model
+#'
+#' \code{svlm} is a wrapper around \code{\link{svsample}} with a formula interface.
+#' The name derives from SV and \code{\link{lm}} because a linear model with SV residuals is fitted.
+#' The function simulates from the joint posterior distribution of the regression coefficients and the SV
+#' parameters \code{mu}, \code{phi}, \code{sigma} (and potentially \code{nu} and \code{rho}),
+#' along with the latent log-volatilities \code{h_0,...,h_n} and returns the
+#' MCMC draws.
+#'
+#' For details concerning the algorithm please see the paper by Kastner and
+#' Frühwirth-Schnatter (2014) and Hosszejni and Kastner (2019).
+#'
+#' @param formula an object of class \code{"formula"}, as in \code{\link{lm}}.
+#' @param data an optional data frame, list or environment (or object
+#' coercible by \code{as.data.frame} to a data frame) containing the
+#' variables in the model.  If not found in \code{data}, the
+#' variables are taken from \code{environment(formula)}, typically
+#' the environment from which \code{svlm} is called.
+#' @param draws single number greater or equal to 1, indicating the number of
+#' draws after burn-in (see below). Will be automatically coerced to integer.
+#' The default value is 10000.
+#' @param burnin single number greater or equal to 0, indicating the number of
+#' draws discarded as burn-in. Will be automatically coerced to integer. The
+#' default value is 1000.
+#' @param heavytails if \code{TRUE}, then the residuals of the linear model
+#' will follow a t-distribution conditional on the latent volatility process.
+#' This model is usually called SV-t. If \code{priorspec} is given, then
+#' \code{heavytails} is ignored.
+#' @param asymmetry if \code{TRUE}, then the residuals of the linear model
+#' will follow an SV process with leverage. If \code{priorspec} is given, then
+#' \code{heavytails} is ignored.
+#' @param priorspec using the smart constructor \code{\link{specify_priors}},
+#' one can set the details of the prior distribution.
+#' @param thin single number greater or equal to 1, coercible to integer.
+#' Every \code{thinpara}th parameter and latent draw is kept and returned. The default
+#' value is 1, corresponding to no thinning of the parameter draws i.e. every
+#' draw is stored.
+#' @param keeptime Either 'all' (the default) or 'last'. Indicates which latent
+#' volatility draws should be stored.
+#' @param quiet logical value indicating whether the progress bar and other
+#' informative output during sampling should be omitted. The default value is
+#' \code{FALSE}, implying verbose output.
+#' @param startpara \emph{optional} named list, containing the starting values
+#' for the parameter draws. If supplied, \code{startpara} may contain
+#' elements named \code{mu}, \code{phi}, \code{sigma}, \code{nu}, \code{rho},
+#' \code{beta}, and \code{latent0}.
+#' The default value is equal to the prior mean.
+#' In case of parallel execution with \code{cl} provided, \code{startpara} can be a list of
+#' named lists that initialize the parallel chains.
+#' @param startlatent \emph{optional} vector of length \code{length(y)},
+#' containing the starting values for the latent log-volatility draws. The
+#' default value is \code{rep(-10, length(y))}.
+#' In case of parallel execution with \code{cl} provided, \code{startlatent} can be a list of
+#' named lists that initialize the parallel chains.
+#' @param parallel \emph{optional} one of \code{"no"} (default), \code{"multicore"}, or \code{"snow"},
+#' indicating what type of parallellism is to be applied. Option
+#' \code{"multicore"} is not available on Windows.
+#' @param n_cpus \emph{optional} positive integer, the number of CPUs to be used in case of
+#' parallel computations. Defaults to \code{1L}. Ignored if parameter
+#' \code{cl} is supplied and \code{parallel != "snow"}.
+#' @param cl \emph{optional} so-called SNOW cluster object as implemented in package
+#' \code{parallel}. Ignored unless \code{parallel == "snow"}.
+#' @param n_chains \emph{optional} positive integer specifying the number of independent MCMC chains
+#' @param print_progress \emph{optional} one of \code{"automatic"}, \code{"progressbar"},
+#' or \code{"iteration"}, controls the output. Ignored if \code{quiet} is \code{TRUE}.
+#' @param expert \emph{optional} named list of expert parameters. For most
+#' applications, the default values probably work best. Interested users are
+#' referred to the literature provided in the References section. If
+#' \code{expert} is provided, it may contain the following named elements:
+#' \itemize{
+#' \item{interweave}{Logical value. If \code{TRUE} (the default),
+#' then ancillarity-sufficiency interweaving strategy (ASIS) is applied
+#' to improve on the sampling efficiency for the parameters.
+#' Otherwise one parameterization is used.}
+#' \item{correct_model_misspecification}{Logical value. If \code{FALSE}
+#' (the default), then auxiliary mixture sampling is used to sample the latent
+#' states. If \code{TRUE}, extra computations are made to correct for model
+#' misspecification either ex-post by reweighting or on-line using a
+#' Metropolis-Hastings step.}
+#' }
+#' @param \dots Any extra arguments will be forwarded to
+#' \code{\link{updatesummary}}, controlling the type of statistics calculated
+#' for the posterior draws.
+#' @return The value returned is a list object of class \code{svdraws} holding
+#' \item{para}{\code{mcmc.list} object containing the \emph{parameter} draws from
+#' the posterior distribution.}
+#' \item{latent}{\code{mcmc.list} object containing the
+#' \emph{latent instantaneous log-volatility} draws from the posterior
+#' distribution.}
+#' \item{latent0}{\code{mcmc.list} object containing the \emph{latent
+#' initial log-volatility} draws from the posterior distribution.}
+#' \item{tau}{\code{mcmc.list} object containing the \emph{latent variance inflation
+#' factors} for the sampler with conditional t-innovations \emph{(optional)}.}
+#' \item{beta}{\code{mcmc.list} object containing the \emph{regression coefficient}
+#' draws from the posterior distribution \emph{(optional)}.}
+#' \item{y}{the left hand side of the observation equation, usually
+#' the argument \code{y}. In case of an AR(\code{k}) specification, the
+#' first \code{k} elements are removed.}
+#' \item{runtime}{\code{proc_time} object containing the
+#' run time of the sampler.}
+#' \item{priors}{a \code{priorspec} object containing the parameter
+#' values of the prior distributions for \code{mu},
+#' \code{phi}, \code{sigma}, \code{nu}, \code{rho}, and
+#' \code{beta}s, and the variance of specification for \code{latent0}.}
+#' \item{thinning}{\code{list} containing the thinning
+#' parameters, i.e. the arguments \code{thinpara}, \code{thinlatent} and
+#' \code{keeptime}.}
+#' \item{summary}{\code{list} containing a collection of
+#' summary statistics of the posterior draws for \code{para}, \code{latent},
+#' and \code{latent0}.}
+#' \item{meanmodel}{\code{character} containing information about how \code{designmatrix}
+#' was employed.}
+#' \item{svlm}{a flag for the use of \code{svlm}}
+#' \item{model_terms}{helper object that represents the formula}
+#' \item{formula}{argument \code{formula}}
+#' \item{xlevels}{helper object that is needed to interpret the formula}
+#'
+#' To display the output, use \code{print}, \code{summary} and \code{plot}. The
+#' \code{print} method simply prints the posterior draws (which is very likely
+#' a lot of output); the \code{summary} method displays the summary statistics
+#' currently stored in the object; the \code{plot} method
+#' \code{\link{plot.svdraws}} gives a graphical overview of the posterior
+#' distribution by calling \code{\link{volplot}}, \code{\link{traceplot}} and
+#' \code{\link{densplot}} and displaying the results on a single page.
+#' @seealso \code{\link{svsample}}, \code{\link{svsim}}, \code{\link{specify_priors}}
+#' @references Kastner, G. and Frühwirth-Schnatter, S. (2014).
+#' Ancillarity-sufficiency interweaving strategy (ASIS) for boosting MCMC
+#' estimation of stochastic volatility models. \emph{Computational Statistics &
+#' Data Analysis}, \bold{76}, 408--423,
+#' \doi{10.1016/j.csda.2013.01.002}.
+#'
+#' Hosszejni, D. and Kastner, G. (2019).
+#' Approaches Toward the Bayesian Estimation of the Stochastic Volatility Model with Leverage.
+#' \emph{Springer Proceedings in Mathematics & Statistics}, \bold{296}, 75--83,
+#' \doi{10.1007/978-3-030-30611-3_8}.
+#' @keywords models ts
+#' @example inst/examples/svlm.R
+#' @export
+svlm <- function(formula, data, draws = 10000, burnin = 1000,
+                 heavytails = FALSE, asymmetry = FALSE,
+                 priorspec = NULL, thin = 1, keeptime = "all",
+                 quiet = FALSE, startpara = NULL, startlatent = NULL,
+                 parallel = c("no", "multicore", "snow"),
+                 n_cpus = 1L, cl = NULL, n_chains = 1L,
+                 print_progress = "automatic",
+                 expert = NULL, ...) {
+  if (!inherits(formula, "formula")) {
+    stop("Argument 'formula' is not of class 'formula'.")
+  }
+
+  mf <- base::match.call(expand.dots = FALSE)
+  m <- base::match(x = c("formula", "data"), table = names(mf), nomatch = 0L)
+  mf <- mf[c(1L, m)]
+  mf$drop.unused.levels <- TRUE
+  mf$na.action <- stats::na.pass
+  mf[[1L]] <- base::quote(stats::model.frame)
+  mf <- base::eval(expr = mf, envir = parent.frame())
+  # Create Vector y
+  y <- stats::model.response(mf, "numeric")
+  mt <- base::attr(x = mf, which = "terms")
+  # Create Matrix X with dummies and transformations
+  designmatrix <- stats::model.matrix(object = mt, data = mf)
+
+  # Validation
+  priorspec <- if (is.null(priorspec)) {
+    if (!is.logical(heavytails) || length(heavytails) != 1) {
+      stop("Argument 'heavytails' should be either 'TRUE' or 'FALSE'.")
+    }
+    if (!is.logical(asymmetry) || length(asymmetry) != 1) {
+      stop("Argument 'asymmetry' should be either 'TRUE' or 'FALSE'.")
+    }
+    specify_priors(
+      mu = sv_normal(0, 100),
+      phi = sv_beta(5, 1.5),
+      sigma2 = sv_gamma(0.5, 0.5),
+      nu = if (heavytails) sv_exponential(rate = 0.1) else sv_infinity(),
+      rho = if (asymmetry) sv_beta(4, 4) else sv_constant(0),
+      latent0_variance = "stationary",
+      beta = sv_multinormal(mean = 0, sd = 10000, dim = NCOL(designmatrix))
+    )
+  } else {
+    priorspec
+  }
+
+  args <- list(...)
+  if ("y" %in% names(args)) {
+    warning("Argument 'y' ignored and extracted from arguments 'data' and 'formula'.")
+  }
+  if ("designmatrix" %in% names(args)) {
+    warning("Argument 'y' ignored and extracted from arguments 'data' and 'formula'.")
+  }
+
+  result <- svsample(y = y, draws = draws, burnin = burnin, designmatrix = designmatrix,
+                     priorspec = priorspec, thin = thin, keeptime = keeptime, quiet = quiet,
+                     startpara = startpara, startlatent = startlatent, parallel = parallel,
+                     n_cpus = n_cpus, cl = cl, n_chains = n_chains, print_progress = print_progress,
+                     expert = expert, ...)
+
+  result$svlm <- TRUE
+  result$model_terms <- mt
+  result$formula <- formula
+  result$xlevels <- stats::.getXlevels(mt, mf)
+  result
+}

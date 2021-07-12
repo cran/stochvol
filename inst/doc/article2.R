@@ -10,14 +10,10 @@ knitr::opts_chunk$set(prompt = TRUE,
                       message = FALSE,
                       echo = FALSE,
                       #cache = TRUE,
-                      fig.path = "Figures2/jss3813-",
+                      fig.path = "jss3813-",
                       tidy = FALSE)
 base::options(continue = "+  ", prompt = "R> ", width = 70,
   useFancyQuotes = FALSE)
-
-library("RColorBrewer")
-library("LSD")
-library("zoo")
 
 ## ----presvrunmodel, eval=TRUE, results='hide'-----------------------
 set.seed(1)
@@ -109,99 +105,99 @@ ts.plot(cbind(qs, obs_CHF), xlab = "Periods ahead", lty = c(rep(1, 3), 2),
 #  y <- svsim(50)$y
 #  svsample(y, expert = list(correct_model_misspecification = TRUE))
 
-## ----fsvprepdata, echo=TRUE, eval=TRUE, fig.width=10, fig.height=5, results='hide'----
-library("factorstochvol")
-library("zoo")
-data("exrates", package = "stochvol")
-m <- 6
-n <- 200
-y <- 100 * logret(tail(exrates[, seq_len(m)], n + 1))
-y <- zoo(y, order.by = tail(exrates$date, n))
-plot(y, main = "", xlab = "Time")
+## ----fsvprepdata, echo=TRUE, eval=FALSE, fig.width=10, fig.height=5, results='hide'----
+#  library("factorstochvol")
+#  library("zoo")
+#  data("exrates", package = "stochvol")
+#  m <- 6
+#  n <- 200
+#  y <- 100 * logret(tail(exrates[, seq_len(m)], n + 1))
+#  y <- zoo(y, order.by = tail(exrates$date, n))
+#  plot(y, main = "", xlab = "Time")
 
-## ----preorder, echo=TRUE, eval=TRUE---------------------------------
-preorder(y, factors = 2)
+## ----preorder, echo=TRUE, eval=FALSE--------------------------------
+#  preorder(y, factors = 2)
 
-## ----findrestrict, echo=TRUE, eval=TRUE-----------------------------
-findrestrict(y, factors = 2)
+## ----findrestrict, echo=TRUE, eval=FALSE----------------------------
+#  findrestrict(y, factors = 2)
 
-## ----runmodel, echo=TRUE, eval=TRUE---------------------------------
-set.seed(1)
-res <- fsvsample(y, factors = 2, draws = 3000, zeromean = FALSE,
-  thin = 10, quiet = TRUE)
+## ----runmodel, echo=TRUE, eval=FALSE--------------------------------
+#  set.seed(1)
+#  res <- fsvsample(y, factors = 2, draws = 3000, zeromean = FALSE,
+#    thin = 10, quiet = TRUE)
 
-## ----printrres, echo = TRUE, eval=TRUE------------------------------
-res
+## ----printrres, echo = TRUE, eval=FALSE-----------------------------
+#  res
 
-## ----covn, echo = TRUE, eval=TRUE-----------------------------------
-dim(cov_n <- covmat(res))
+## ----covn, echo = TRUE, eval=FALSE----------------------------------
+#  dim(cov_n <- covmat(res))
 
-## ----logdetcovn, echo = 2:5, fig.width = 10, fig.height=3.5, results='hide', eval=TRUE----
-par(mfrow = c(1, 2), mgp = c(1.7, 0.5, 0), mar = c(3, 3, 1, 1))
-logdet <- function (x) log(det(x))
-logdet_n <- apply(cov_n[,,,1], 3, logdet)
-ts.plot(logdet_n)
-acf(logdet_n, main = "")
+## ----logdetcovn, echo = 2:5, fig.width = 10, fig.height=3.5, results='hide', eval=FALSE----
+#  par(mfrow = c(1, 2), mgp = c(1.7, 0.5, 0), mar = c(3, 3, 1, 1))
+#  logdet <- function (x) log(det(x))
+#  logdet_n <- apply(cov_n[,,,1], 3, logdet)
+#  ts.plot(logdet_n)
+#  acf(logdet_n, main = "")
 
 ## ----covess, echo = TRUE--------------------------------------------
 #  round(apply(cov_n, 1:2, coda::effectiveSize))
 
-## ----corimageplot, echo=2, eval=TRUE, results='hide'----------------
-par(mfrow = c(1, 3), xpd = TRUE)
-corimageplot(res, these = seq(1, n, length.out = 3), plotCI = "circle",
-  plotdatedist = 2, date.cex = 1.1)
+## ----corimageplot, echo=2:3, eval=FALSE, results='hide'-------------
+#  par(mfrow = c(1, 3), xpd = TRUE)
+#  corimageplot(res, these = seq(1, n, length.out = 3), plotCI = "circle",
+#    plotdatedist = 2, date.cex = 1.1)
 
-## ----voltimeplot, echo=2:3, eval=TRUE, fig.width = 10, fig.height = 3, results='hide'----
-par(mgp = c(1.7, 0.5, 0), mar = c(2, 1.5, 1, 0.5))
-palette(RColorBrewer::brewer.pal(7, "Dark2")[-5])
-voltimeplot(res, legend = "top")
+## ----voltimeplot, echo=2:3, eval=FALSE, fig.width = 10, fig.height = 3, results='hide'----
+#  par(mgp = c(1.7, 0.5, 0), mar = c(2, 1.5, 1, 0.5))
+#  palette(RColorBrewer::brewer.pal(7, "Dark2")[-5])
+#  voltimeplot(res, legend = "top")
 
-## ----cortimeplot, echo=2:4, eval=TRUE, fig.width = 10, fig.height = 5, results='hide'----
-par(mfrow = c(2, 1), mgp = c(1.7, 0.5, 0), mar = c(2, 1.5, 1, 0.5))
-palette(RColorBrewer::brewer.pal(6, "Dark2"))
-cortimeplot(res, 1)
-cortimeplot(res, 2)
+## ----cortimeplot, echo=2:4, eval=FALSE, fig.width = 10, fig.height = 5, results='hide'----
+#  par(mfrow = c(2, 1), mgp = c(1.7, 0.5, 0), mar = c(2, 1.5, 1, 0.5))
+#  palette(RColorBrewer::brewer.pal(6, "Dark2"))
+#  cortimeplot(res, 1)
+#  cortimeplot(res, 2)
 
-## ----comtimeplot, echo=2, eval=TRUE, fig.height = 6.5, results='hide'----
-par(mgp = c(1.7, 0.5, 0), mar = c(3, 3, 1, 1))
-comtimeplot(res, maxrows = 6)
+## ----comtimeplot, echo=2, eval=FALSE, fig.height = 6.5, results='hide'----
+#  par(mgp = c(1.7, 0.5, 0), mar = c(3, 3, 1, 1))
+#  comtimeplot(res, maxrows = 6)
 
-## ----loadplot2, echo=2:3, eval=TRUE, fig.width=4.5, fig.height=4.5, results='hide'----
-par(mgp = c(1.7, 0.5, 0), mar = c(2.7, 2.7, 2, 0.5))
-facloadpairplot(res)
-facloadcredplot(res)
+## ----loadplot2, echo=2:3, eval=FALSE, fig.width=4.5, fig.height=4.5, results='hide'----
+#  par(mgp = c(1.7, 0.5, 0), mar = c(2.7, 2.7, 2, 0.5))
+#  facloadpairplot(res)
+#  facloadcredplot(res)
 
-## ----varplot, echo=2, eval=TRUE, fig.width=10, fig.height=4, results='hide'----
-par(mgp = c(1.7, 0.5, 0), mar = c(2.7, 2.7, 2, 0.5))
-logvartimeplot(res, show = "fac")
+## ----varplot, echo=2, eval=FALSE, fig.width=10, fig.height=4, results='hide'----
+#  par(mgp = c(1.7, 0.5, 0), mar = c(2.7, 2.7, 2, 0.5))
+#  logvartimeplot(res, show = "fac")
 
-## ----varplot2, echo=2, eval=TRUE, fig.width=7, fig.height=6.5, results='hide'----
-par(mgp = c(1.7, 0.5, 0), mar = c(2.7, 2.7, 2, 0.5))
-logvartimeplot(res, show = "idi", maxrows = 6)
+## ----varplot2, echo=2, eval=FALSE, fig.width=7, fig.height=6.5, results='hide'----
+#  par(mgp = c(1.7, 0.5, 0), mar = c(2.7, 2.7, 2, 0.5))
+#  logvartimeplot(res, show = "idi", maxrows = 6)
 
-## ----evdiag, fig.width=10, fig.height=4, eval=TRUE, echo=2:4, results = 'hide'----
-par(mgp = c(1.7, 0.5, 0), mar = c(2.7, 2.7, 2, 0.5))
-set.seed(6)
-largemodel <- fsvsample(y, factors = 6)
-evdiag(largemodel)
+## ----evdiag, fig.width=10, fig.height=4, eval=FALSE, echo=2:4, results = 'hide'----
+#  par(mgp = c(1.7, 0.5, 0), mar = c(2.7, 2.7, 2, 0.5))
+#  set.seed(6)
+#  largemodel <- fsvsample(y, factors = 6)
+#  evdiag(largemodel)
 
-## ----predcov1, eval=TRUE, echo=TRUE---------------------------------
-set.seed(4)
-predcor1 <- predcor(res)
-round(apply(predcor1[,,,1], 1:2, mean), 2)
-round(apply(predcor1[,,,1], 1:2, sd), 2)
+## ----predcov1, eval=FALSE, echo=TRUE--------------------------------
+#  set.seed(4)
+#  predcor1 <- predcor(res)
+#  round(apply(predcor1[,,,1], 1:2, mean), 2)
+#  round(apply(predcor1[,,,1], 1:2, sd), 2)
 
-## ----preddist, eval=TRUE, fig.height = 6, fig.width = 9, echo = TRUE, results='hide'----
-set.seed(5)
-predcov_1 <- predcov(res)
-preddraws <- t(res$beta)
-for (i in seq_len(NROW(preddraws)))
-  preddraws[i,] <- preddraws[i,] + chol(predcov_1[,,i,1]) %*% rnorm(m)
-plotlims <- quantile(preddraws, c(0.01, 0.99))
-LSD::heatpairs(preddraws, labels = colnames(y), cor.cex = 1.5, gap = 0.3,
-  xlim = plotlims, ylim = plotlims)
+## ----preddist, eval=FALSE, fig.height = 6, fig.width = 9, echo = TRUE, results='hide'----
+#  set.seed(5)
+#  predcov_1 <- predcov(res)
+#  preddraws <- t(res$beta)
+#  for (i in seq_len(NROW(preddraws)))
+#    preddraws[i,] <- preddraws[i,] + chol(predcov_1[,,i,1]) %*% rnorm(m)
+#  plotlims <- quantile(preddraws, c(0.01, 0.99))
+#  LSD::heatpairs(preddraws, labels = colnames(y), cor.cex = 1.5, gap = 0.3,
+#    xlim = plotlims, ylim = plotlims)
 
-## ----predloglik, eval=TRUE, echo = TRUE-----------------------------
-set.seed(6)
-predloglik(res, matrix(0, nrow = 2, ncol = m), ahead = 1:2, each = 10)
+## ----predloglik, eval=FALSE, echo = TRUE----------------------------
+#  set.seed(6)
+#  predloglik(res, matrix(0, nrow = 2, ncol = m), ahead = 1:2, each = 10)
 

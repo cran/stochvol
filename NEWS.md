@@ -1,3 +1,21 @@
+# stochvol 3.1.0
+
+- NEW FUNCTION 'svlm', which has a formula interface;
+  it is a wrapper around 'svsample'; many thanks
+  to Peter Knaus for his help
+- Turn on printing on Windows
+- Implement Geweke test in C++; it is feasible to
+  execute it as a CRAN test now
+- Small change in the behavior of 'predict.svdraws':
+  when 'newdata' is given then 'steps' is ignored;
+  A warning is shown if this is relevant
+- Updated examples for 'svsample' and 'predict' so
+  that they use the extractors as intended
+- Simplified vignette: cache some results to
+  reduce dependencies
+- Bugfix in adaptation that does not affect
+  correctness
+
 # stochvol 3.0.6
 
 - Correct wrongly submitted vignettes
