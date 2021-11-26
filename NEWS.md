@@ -1,3 +1,10 @@
+# stochvol 3.2.0
+
+- Include reference to the JSS paper
+- Bugfix: initial value for 'mu' was incorrect when
+  'mu' was set to constant a priori
+- Typo corrections in the documentation
+
 # stochvol 3.1.0
 
 - NEW FUNCTION 'svlm', which has a formula interface;
