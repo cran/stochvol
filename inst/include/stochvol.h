@@ -1,7 +1,7 @@
 /*
  * R package stochvol by
- *     Gregor Kastner Copyright (C) 2013-2020
- *     Darjus Hosszejni Copyright (C) 2019-2020
+ *     Gregor Kastner Copyright (C) 2013-2018
+ *     Gregor Kastner and Darjus Hosszejni Copyright (C) 2019-
  *  
  *  This file is part of the R package stochvol: Efficient Bayesian
  *  Inference for Stochastic Volatility Models.
@@ -127,6 +127,70 @@ namespace stochvol {
         {
             cpp_function(data, curpara, h, h0, mixprob, r, centered_baseline, C0, cT, Bsigma, a0, b0, bmu, Bmu, B011inv, B022inv, Gammaprior, truncnormal, MHcontrol, MHsteps, parameterization, dontupdatemu, priorlatent0);
         }
+    }
+
+    namespace fast_sv {
+
+      inline
+      CholeskyTridiagonal cholesky_tridiagonal(const arma::vec& omega_diag, const double omega_offdiag) {
+        typedef CholeskyTridiagonal(*CppFunction)(const arma::vec&, const double);
+        static CppFunction cpp_function = NULL;
+        if (cpp_function == NULL) {
+          cpp_function = (CppFunction)R_GetCCallable("stochvol", "cholesky_tridiagonal");
+        }
+        {
+          return cpp_function(omega_diag, omega_offdiag);
+        }
+      }
+
+      inline
+      arma::vec forward_algorithm(const arma::vec& chol_diag, const arma::vec& chol_offdiag, const arma::vec& covector) {
+        typedef arma::vec(*CppFunction)(const arma::vec&, const arma::vec&, const arma::vec&);
+        static CppFunction cpp_function = NULL;
+        if (cpp_function == NULL) {
+          cpp_function = (CppFunction)R_GetCCallable("stochvol", "forward_algorithm");
+        }
+        {
+          return cpp_function(chol_diag, chol_offdiag, covector);
+        }
+      }
+
+      inline
+      arma::vec backward_algorithm(const arma::vec& chol_diag, const arma::vec& chol_offdiag, const arma::vec& htmp) {
+        typedef arma::vec(*CppFunction)(const arma::vec&, const arma::vec&, const arma::vec&);
+        static CppFunction cpp_function = NULL;
+        if (cpp_function == NULL) {
+          cpp_function = (CppFunction)R_GetCCallable("stochvol", "backward_algorithm");
+        }
+        {
+          return cpp_function(chol_diag, chol_offdiag, htmp);
+        }
+      }
+
+      inline
+      arma::uvec inverse_transform_sampling(const arma::vec& mixprob, const int T) {
+        typedef arma::uvec(*CppFunction)(const arma::vec&, const int);
+        static CppFunction cpp_function = NULL;
+        if (cpp_function == NULL) {
+          cpp_function = (CppFunction)R_GetCCallable("stochvol", "inverse_transform_sampling");
+        }
+        {
+          return cpp_function(mixprob, T);
+        }
+      }
+
+      inline
+      arma::vec find_mixture_indicator_cdf(const arma::vec& datanorm) {
+        typedef arma::vec(*CppFunction)(const arma::vec&);
+        static CppFunction cpp_function = NULL;
+        if (cpp_function == NULL) {
+          cpp_function = (CppFunction)R_GetCCallable("stochvol", "find_mixture_indicator_cdf");
+        }
+        {
+          return cpp_function(datanorm);
+        }
+      }
+
     }
 
 }

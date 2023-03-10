@@ -1,3 +1,12 @@
+# stochvol 3.2.1
+
+- Minor adaptions to NEWS.md to comply with NEWS extractor
+  'tools:::.build_news_db_from_package_NEWS_md'
+- Export further C++ functions 'cholesky_tridiagonal',
+  'forward_algorithm', 'backward_algorithm',
+  'inverse_transform_sampling', 'find_mixture_indicator_cdf'
+- Bugfix in 'print.svsim'
+
 # stochvol 3.2.0
 
 - Include reference to the JSS paper
@@ -431,9 +440,3 @@
 # stochvol 0.5-0
 
 - First CRAN release version.
-
-# Initial TODO
-
-- Code updatesummary in C (apply w/ quantiles is slow).
-- Make AWOL sampler available for fixed parameters. Thanks to Hedibert
-  Lopes for pointing this out.
