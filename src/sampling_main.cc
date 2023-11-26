@@ -110,7 +110,7 @@ List svsample_fast_cpp(
     r.set_size(T);
     r.fill(r_elem);
   } else if (r.n_elem != T) {
-    ::Rf_error("Bad initialization for the vector of mixture indicators. Should have length %d, received length %d, first element %f", T, r.n_elem, r[0]);
+    ::Rf_error("Bad initialization for the vector of mixture indicators. Should have length %d, received length %d, first element %u", T, r.n_elem, r[0]);
   }
   r -= 1u;
   R_assert(arma::all(r <= 9u), "Initial values of the mixture indicators need to be between 1 and 10 inclusive.");
@@ -479,7 +479,7 @@ Rcpp::List geweke_test() {
 
     for (unsigned int m = 0; m < draws; m++) {
       if (m > 0 and (m + 1) % 10000 == 0) {
-        ::Rprintf("Done with %d%\r", (100 * (m + 1)) / draws);
+        ::Rprintf("Done with %d%%\r", (100 * (m + 1)) / draws);
       }
       // updates
       y = simulate_data(r, h);
@@ -597,7 +597,7 @@ Rcpp::List geweke_test() {
 
     for (int m = -burnin; m < draws; m++) {
       if ((m + burnin + 1) % 10000 == 0) {
-        ::Rprintf("Done with %d%\r", (100 * (m + burnin + 1)) / (burnin + draws));
+        ::Rprintf("Done with %d%%\r", (100 * (m + burnin + 1)) / (burnin + draws));
       }
 
       // updates
