@@ -1,10 +1,10 @@
-a707e9084cdcdeb91201b317c4b6cfc1 *DESCRIPTION
+b2b37e8f2094c039e86042a55de37a94 *DESCRIPTION
 936e9e6333a075c7dbbad33836adfee7 *NAMESPACE
 158163a268ac91be094d63d3c26d0fdb *NEWS.md
 dd434afef42e4026916bbf2ba3f5ef1f *R/catch-routine-registration.R
 c91a085d3c7d25ab47b10e07d03c77b2 *R/exports.R
 63b70a941db7195d2fe8a732e9587e8f *R/generics.R
-17d5149053f9cb090558e6a9a67aadcf *R/plotting.R
+6a8629afa5f97fa8348d50f7d47e8ec6 *R/plotting.R
 0ff148566a12f0844806cba0c41ec35d *R/simulation.R
 197263f498aee184b0b0933a21792824 *R/stochvol-cpp-doc.R
 317fc022b26887e479ce1897a49428c3 *R/stochvol-package.R
@@ -19,10 +19,10 @@ f82f8a20839b63c449881a2686ddf621 *data/exrates.RData
 5945134a338d93d698de335372fd85fc *inst/CITATION
 7dc6084934030622ec9438ac48d0bb21 *inst/doc/article.R
 0e932369901750235de61d15e35e46c4 *inst/doc/article.Rnw
-50052979e544f247d94af573de33628d *inst/doc/article.pdf
+db86fc4d530b6069091ee34be0b5f17d *inst/doc/article.pdf
 86badba92d40132dc3ec6e87c24ab52d *inst/doc/article2.R
 7c6195c58abe4d647ba76ef7a814fa89 *inst/doc/article2.Rnw
-22ed67cd2d4f94d2b2ae716ba19b1761 *inst/doc/article2.pdf
+f035210b8bc12df12a9db336a406ba35 *inst/doc/article2.pdf
 96f4fd0d417d74045c5fa02bd7dbf940 *inst/doc/jss3813-comtimeplot-1.pdf
 e2d38826a324e9f852f11c5801aeed23 *inst/doc/jss3813-corimageplot-1.pdf
 c416ae50a5dd10078931d52cf73029f9 *inst/doc/jss3813-cortimeplot-1.pdf
