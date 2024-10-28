@@ -342,7 +342,7 @@ flatten <- function (x) {
 #' a lot of output); the \code{summary} method displays the summary statistics
 #' currently stored in the object; the \code{plot} method gives a graphical
 #' overview of the posterior distribution by calling \code{\link{volplot}},
-#' \code{\link{traceplot}} and \code{\link{densplot}} and displaying the
+#' \code{\link[coda]{traceplot}} and \code{\link[coda]{densplot}} and displaying the
 #' results on a single page.
 #' @note \code{updatesummary} does not actually overwrite the object's current
 #' summary, but in fact creates a new object with an updated summary. Thus,
@@ -433,9 +433,9 @@ summary.svdraws <- function (object, showpara = TRUE, showlatent = FALSE, ...) {
   }
   if (isTRUE(object$resampled)) {
     ret$resampled <- list(para = list(max_entropy = log(length(object$correction_weight_para[[1]])),
-                                      entropy = min(sapply(object$correction_weight_para, function (w) -sum(w * log(w))))),
+                                      entropy = min(sapply(object$correction_weight_para, function (w) -sum(w * log(w), na.rm = TRUE)))),
                           latent = list(max_entropy = log(length(object$correction_weight_latent[[1]])),
-                                        entropy = min(sapply(object$correction_weight_latent, function (w) -sum(w * log(w))))),
+                                        entropy = min(sapply(object$correction_weight_latent, function (w) -sum(w * log(w), na.rm = TRUE)))),
                           same_resampling = object$thinning$para == object$thinning$latent)
   }
   ret
