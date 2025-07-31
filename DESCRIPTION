@@ -3,7 +3,7 @@ Package: stochvol
 Type: Package
 Title: Efficient Bayesian Inference for Stochastic Volatility (SV)
         Models
-Version: 3.2.5
+Version: 3.2.6
 Authors@R: c(
 	person("Darjus", "Hosszejni", role = c("aut", "cre"), email = "darjus.hosszejni@icloud.com", comment = c(ORCID = "0000-0002-3803-691X")),
 	person("Gregor", "Kastner", role = c("aut"), email = "gregor.kastner@aau.at", comment = c(ORCID = "0000-0002-8237-8271")))
@@ -12,17 +12,19 @@ License: GPL (>= 2)
 Depends: R (>= 3.5)
 Imports: Rcpp (>= 1.0), coda (>= 0.19), graphics, stats, utils,
         grDevices
-Suggests: testthat (>= 2.3.2), mvtnorm, knitr
+Suggests: testthat (>= 3.0.0), mvtnorm, knitr
 LinkingTo: Rcpp, RcppArmadillo (>= 0.9.900)
 RoxygenNote: 7.3.2
 BuildResaveData: best
 VignetteBuilder: knitr
 BugReports: https://github.com/gregorkastner/stochvol/issues
 URL: https://gregorkastner.github.io/stochvol/
+Config/testthat/edition: 3
 NeedsCompilation: yes
-Packaged: 2024-10-28 13:12:59 UTC; darjushosszejni
-Author: Darjus Hosszejni [aut, cre] (<https://orcid.org/0000-0002-3803-691X>),
-  Gregor Kastner [aut] (<https://orcid.org/0000-0002-8237-8271>)
+Packaged: 2025-07-31 17:18:37 UTC; darjushosszejni
+Author: Darjus Hosszejni [aut, cre] (ORCID:
+    <https://orcid.org/0000-0002-3803-691X>),
+  Gregor Kastner [aut] (ORCID: <https://orcid.org/0000-0002-8237-8271>)
 Maintainer: Darjus Hosszejni <darjus.hosszejni@icloud.com>
 Repository: CRAN
-Date/Publication: 2024-10-28 15:40:02 UTC
+Date/Publication: 2025-07-31 18:00:09 UTC

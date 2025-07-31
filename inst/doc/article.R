@@ -144,24 +144,24 @@ latentdraw <- rep(-10, n)
 paranames <- names(paradraw)
 
 ## ----eval=FALSE, echo=TRUE------------------------------------------
-#  for (i in -(burnin-1):draws) {
-#    ytilde <- y - X %*% betadraw
-#    svdraw <- svsample_fast_cpp(ytilde, startpara = paradraw,
-#      startlatent = latentdraw, priorspec = priors)
-#    paradraw <- svdraw$para
-#    latentdraw <- drop(svdraw$latent)
-#    normalizer <- as.numeric(exp(-latentdraw / 2))
-#    Xnew <- X * normalizer
-#    ynew <- y * normalizer
-#    Sigma <- solve(crossprod(Xnew) + B0inv)
-#    mu <- Sigma %*% (crossprod(Xnew, ynew) + B0inv %*% b0)
-#    betadraw <- as.numeric(mvtnorm::rmvnorm(1, mu, Sigma))
-#    if (i > 0 && i %% thinning == 0) {
-#      draws2[i/thinning, 1:3] <- drop(paradraw)[paranames]
-#      draws2[i/thinning, 4:5] <- betadraw
-#      draws2[i/thinning, 6:(n+5)] <- latentdraw
-#    }
-#  }
+# for (i in -(burnin-1):draws) {
+#   ytilde <- y - X %*% betadraw
+#   svdraw <- svsample_fast_cpp(ytilde, startpara = paradraw,
+#     startlatent = latentdraw, priorspec = priors)
+#   paradraw <- svdraw$para
+#   latentdraw <- drop(svdraw$latent)
+#   normalizer <- as.numeric(exp(-latentdraw / 2))
+#   Xnew <- X * normalizer
+#   ynew <- y * normalizer
+#   Sigma <- solve(crossprod(Xnew) + B0inv)
+#   mu <- Sigma %*% (crossprod(Xnew, ynew) + B0inv %*% b0)
+#   betadraw <- as.numeric(mvtnorm::rmvnorm(1, mu, Sigma))
+#   if (i > 0 && i %% thinning == 0) {
+#     draws2[i/thinning, 1:3] <- drop(paradraw)[paranames]
+#     draws2[i/thinning, 4:5] <- betadraw
+#     draws2[i/thinning, 6:(n+5)] <- latentdraw
+#   }
+# }
 
 ## ----longerbeta-----------------------------------------------------
 if (usePreCalcResults) {
@@ -196,14 +196,14 @@ for (i in -(burnin-1):draws) {
 }
 
 ## ----betaplot2, echo=TRUE, eval=FALSE-------------------------------
-#  plot(coda::mcmc(draws2[, 4:8]))
+# plot(coda::mcmc(draws2[, 4:8]))
 
 ## ----hetero, fig.width=7.5, fig.height=8----------------------------
 par(mar = c(3.1, 1.8, 1.9, .5), mgp = c(1.8, .6, 0))
 plot(coda::mcmc(draws2selection[seq(1L, nrow(draws2selection), by = plotevery), 1:4]))
 
 ## ----colmeans2, eval=FALSE, echo=TRUE-------------------------------
-#  colMeans(draws2[, 4:8])
+# colMeans(draws2[, 4:8])
 
 ## ----echo=FALSE, eval=TRUE------------------------------------------
 colMeans(draws2selection)
