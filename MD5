@@ -1,6 +1,6 @@
-e65b44239ced222aa9c4ba9f9ae96fc8 *DESCRIPTION
+cf05136a05e3ed3ea1699861ffce2466 *DESCRIPTION
 b97917531b8206a0c015448b07fe3276 *NAMESPACE
-fd73be4b8102a0ad9ff85b1d03fb3699 *NEWS.md
+e8daea4bbac2529ea708c2678fbb774e *NEWS.md
 dd434afef42e4026916bbf2ba3f5ef1f *R/catch-routine-registration.R
 c91a085d3c7d25ab47b10e07d03c77b2 *R/exports.R
 63b70a941db7195d2fe8a732e9587e8f *R/generics.R
@@ -19,10 +19,10 @@ ab072fb9af85acd6e8029e19cef84691 *R/validation.R
 5945134a338d93d698de335372fd85fc *inst/CITATION
 2f6ff5c90d416f0220de297e75706040 *inst/doc/article.R
 0e932369901750235de61d15e35e46c4 *inst/doc/article.Rnw
-345f4376ad605e83b4f60237892eeada *inst/doc/article.pdf
+ecc22bcc15a53bc7a0c0f942960abdcb *inst/doc/article.pdf
 e8130bf6a0bba309c641907634fdd33e *inst/doc/article2.R
 7c6195c58abe4d647ba76ef7a814fa89 *inst/doc/article2.Rnw
-7c63b57dfe33c6d0d8b43ef1ad4c67b5 *inst/doc/article2.pdf
+4300e99bfe272b8f37440043222557a9 *inst/doc/article2.pdf
 96f4fd0d417d74045c5fa02bd7dbf940 *inst/doc/jss3813-comtimeplot-1.pdf
 e2d38826a324e9f852f11c5801aeed23 *inst/doc/jss3813-corimageplot-1.pdf
 c416ae50a5dd10078931d52cf73029f9 *inst/doc/jss3813-cortimeplot-1.pdf
@@ -92,7 +92,7 @@ d0cddb679da475b4e14c2a707d737476 *src/sampling_latent_states.h
 a21e59d5329930612ae5f5cac1959311 *src/sampling_main.h
 fca8a7b840954ef48c2f1200cec609b5 *src/sampling_parameters.cc
 73d3934b8f854a5cb7f71d1ddb4694a2 *src/sampling_parameters.h
-be1152508b20a020eb40be64473baab5 *src/single_update.cc
+3ee08a1a5c1061bf64d0ba55d1409e43 *src/single_update.cc
 ab5ff714c5a8fabdd418c137250120df *src/single_update.h
 2fb8e65330e9db1559e354eb1bf699dc *src/test-densities.cc
 f9754504ade4eb3ec01234e29e6931b7 *src/test-runner.cc
@@ -104,7 +104,6 @@ f9754504ade4eb3ec01234e29e6931b7 *src/test-runner.cc
 00d54e03481ded869a293b2ebee49c45 *src/utils_parameters.cc
 05ef8b622ca5321cc33b665d00b14b20 *src/utils_parameters.h
 6f9cf4431d1fcd23feaa7ee14ffca05c *tests/testthat.R
-befc8534cca8244167d78f8d4d576ab4 *tests/testthat/setup_all.R
 1f8c503e17150f3769b10479a517e730 *tests/testthat/test-cpp.R
 2a8226eea91115ebfc3d34b396c90cad *tests/testthat/test-formula.R
 f20b4c61716f22912a1dc58f6269d603 *tests/testthat/test-priorspec.R
